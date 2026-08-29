@@ -74,7 +74,7 @@ const pillars = [
   {
     number: "01",
     title: "In-Demand Skills",
-    copy: "Meta Ads, Shopify, Amazon, eBay, and Graphic Designing.",
+    copy: "Digital Marketing, Shopify, Amazon, eBay, and Graphic Designing.",
     icon: Compass,
   },
   {
@@ -99,9 +99,9 @@ const pillars = [
 
 const courses: Course[] = [
   {
-    id: "meta-ads",
+    id: "digital-marketing",
     number: "01",
-    title: "Meta Ads",
+    title: "Digital Marketing",
     description:
       "Running Facebook & Instagram ads, targeting, scaling, budget optimization",
     icon: Target,
@@ -160,9 +160,16 @@ const journey = [
   { label: "Earn", icon: CircleDollarSign },
 ]
 
-const platformMarks = ["Meta", "Shopify", "Amazon", "eBay", "Fiverr", "Adobe"]
+const platformMarks = [
+  "Digital Marketing",
+  "Shopify",
+  "Amazon",
+  "eBay",
+  "Fiverr",
+  "Adobe",
+]
 const marqueeItems = [
-  "META ADS",
+  "DIGITAL MARKETING",
   "SHOPIFY",
   "AMAZON",
   "EBAY",
@@ -658,7 +665,8 @@ function Hero() {
           </h1>
 
           <p className="hero-copy mt-7 max-w-2xl text-base leading-7 text-white/72 sm:text-lg">
-            Practical training in Meta Ads, Shopify, Amazon, eBay, Graphic
+            Practical training in Digital Marketing, Shopify, Amazon, eBay,
+            Graphic
             Designing — where you don&apos;t just get lectures, you get a real
             path to earning.
           </p>
@@ -699,7 +707,7 @@ function Hero() {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#080808]/88 via-transparent to-transparent" />
           </div>
-          {["Meta Ads", "Shopify", "Amazon", "eBay", "Design"].map(
+          {["Digital Marketing", "Shopify", "Amazon", "eBay", "Design"].map(
             (label, index) => (
               <span
                 key={label}
@@ -1120,10 +1128,10 @@ function TrustSection() {
         <div className="space-y-6" data-reveal>
           <p className="text-lg leading-8 text-[#4b4b4b]">
             Freelancing and digital skills are the fastest-growing career path
-            today. Meta Ads, Shopify, Amazon, eBay, and Graphic Design — these
-            are all skills with demand rising every day in the global market.
-            Builtbyskills gives you exactly the training that works in the real
-            market.
+            today. Digital Marketing, Shopify, Amazon, eBay, and Graphic Design
+            — these are all skills with demand rising every day in the global
+            market. Builtbyskills gives you exactly the training that works in
+            the real market.
           </p>
           <div className="relative aspect-[1.65] overflow-hidden rounded-[1.2rem] border border-[#111111]/10 bg-[#111111] shadow-xl shadow-black/10">
             <Image

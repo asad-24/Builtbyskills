@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://builtbyskills.com"),
   title: "Builtbyskills | Learn Digital Skills & Start Earning",
   description:
-    "Learn Meta Ads, Shopify, Amazon, eBay and Graphic Designing through practical live classes, mentorship and Fiverr guidance with Builtbyskills.",
+    "Learn Digital Marketing, Shopify, Amazon, eBay and Graphic Designing through practical live classes, mentorship and Fiverr guidance with Builtbyskills.",
   openGraph: {
     title: "Builtbyskills | Learn Digital Skills & Start Earning",
     description:
