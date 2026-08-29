@@ -16,7 +16,6 @@ import {
   MessageSquare,
   PackageCheck,
   PenTool,
-  PlaySquare,
   Rocket,
   ShoppingBag,
   Sparkles,
@@ -75,7 +74,7 @@ const pillars = [
   {
     number: "01",
     title: "In-Demand Skills",
-    copy: "Meta Ads, Shopify, Amazon, eBay, Graphic Designing, YouTube Automation.",
+    copy: "Meta Ads, Shopify, Amazon, eBay, and Graphic Designing.",
     icon: Compass,
   },
   {
@@ -106,8 +105,8 @@ const courses: Course[] = [
     description:
       "Running Facebook & Instagram ads, targeting, scaling, budget optimization",
     icon: Target,
-    image: "/course-meta-ads.png",
-    imageAlt: "AI visual of abstract ad campaign dashboards and targeting graphics",
+    image: "/img/Digital%20Marketing.png",
+    imageAlt: "Digital marketing visual with campaign and audience graphics",
     className: "lg:col-span-5 lg:row-span-2",
   },
   {
@@ -116,8 +115,8 @@ const courses: Course[] = [
     title: "Shopify",
     description: "Store setup, product research, ecommerce management",
     icon: ShoppingBag,
-    image: "/course-shopify.png",
-    imageAlt: "AI visual of abstract ecommerce store builder and product cards",
+    image: "/img/Shopify.png",
+    imageAlt: "Shopify training visual with ecommerce store graphics",
     className: "lg:col-span-3",
   },
   {
@@ -126,8 +125,8 @@ const courses: Course[] = [
     title: "Amazon",
     description: "Product listing, FBA basics, account handling",
     icon: PackageCheck,
-    image: "/course-amazon.png",
-    imageAlt: "AI visual of abstract marketplace listings and fulfillment panels",
+    image: "/img/AMAZON.png",
+    imageAlt: "Amazon marketplace training visual with package and rating graphics",
     className: "lg:col-span-4",
   },
   {
@@ -136,8 +135,8 @@ const courses: Course[] = [
     title: "eBay",
     description: "Store setup, listing optimization, sales growth",
     icon: BadgeCheck,
-    image: "/course-ebay.png",
-    imageAlt: "AI visual of abstract marketplace seller dashboard and product tiles",
+    image: "/img/EBAY.png",
+    imageAlt: "eBay marketplace training visual with seller and listing graphics",
     className: "lg:col-span-3",
   },
   {
@@ -146,20 +145,9 @@ const courses: Course[] = [
     title: "Graphic Designing",
     description: "Branding, social media creatives, client-ready designs",
     icon: PenTool,
-    image: "/course-graphic-design.png",
-    imageAlt: "AI visual of abstract graphic design workspace and creative canvases",
-    className: "lg:col-span-5",
-  },
-  {
-    id: "youtube-automation",
-    number: "06",
-    title: "YouTube Automation",
-    description:
-      "Faceless channel setup, scripting, voiceover, editing, and the full monetization system",
-    icon: PlaySquare,
-    image: "/course-youtube-automation.png",
-    imageAlt: "AI visual of abstract video automation timeline and analytics panels",
-    className: "lg:col-span-4 lg:row-span-2",
+    image: "/img/Graphic%20desiging.png",
+    imageAlt: "Graphic designing training visual with creative design workspace",
+    className: "lg:col-span-4",
   },
 ]
 
@@ -172,14 +160,13 @@ const journey = [
   { label: "Earn", icon: CircleDollarSign },
 ]
 
-const platformMarks = ["Meta", "Shopify", "Amazon", "eBay", "Fiverr", "YouTube"]
+const platformMarks = ["Meta", "Shopify", "Amazon", "eBay", "Fiverr", "Adobe"]
 const marqueeItems = [
   "META ADS",
   "SHOPIFY",
   "AMAZON",
   "EBAY",
   "GRAPHIC DESIGN",
-  "YOUTUBE AUTOMATION",
   "FREELANCING",
 ]
 
@@ -551,8 +538,14 @@ function Header({
           className="group flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8ff3d]"
           aria-label="Builtbyskills home"
         >
-          <span className="grid size-9 place-items-center rounded-full bg-[#b8ff3d] text-sm font-black text-[#080808] transition-transform duration-300 group-hover:scale-105">
-            BS
+          <span className="relative grid size-10 overflow-hidden rounded-full bg-[#b8ff3d] transition-transform duration-300 group-hover:scale-105">
+            <Image
+              src="/img/BBS%20LOGO%20A.jpg.jpeg"
+              alt=""
+              fill
+              sizes="40px"
+              className="object-cover"
+            />
           </span>
           <span className="text-base font-black uppercase text-[#f7f7f2]">
             Builtbyskills
@@ -666,8 +659,8 @@ function Hero() {
 
           <p className="hero-copy mt-7 max-w-2xl text-base leading-7 text-white/72 sm:text-lg">
             Practical training in Meta Ads, Shopify, Amazon, eBay, Graphic
-            Designing, and YouTube Automation — where you don&apos;t just get
-            lectures, you get a real path to earning.
+            Designing — where you don&apos;t just get lectures, you get a real
+            path to earning.
           </p>
 
           <div className="hero-actions mt-9 flex flex-col gap-3 sm:flex-row">
@@ -697,8 +690,8 @@ function Hero() {
         <div className="hero-visual relative z-10 mx-auto w-full max-w-[390px] pb-10 lg:translate-y-2">
           <div className="hero-visual-card relative aspect-[0.86] overflow-hidden rounded-[1.7rem] border border-white/12 bg-[#111111] shadow-2xl shadow-[#b8ff3d]/10">
             <Image
-              src="/builtbyskills-hero.png"
-              alt="Abstract dashboard showing learning, ecommerce, ads, video, and client work"
+              src="/img/builtbyskills-hero.png"
+              alt="Abstract dashboard showing learning, ecommerce, ads, and client work"
               fill
               priority
               sizes="(min-width: 1024px) 420px, 92vw"
@@ -706,7 +699,7 @@ function Hero() {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#080808]/88 via-transparent to-transparent" />
           </div>
-          {["Meta Ads", "Shopify", "Amazon", "eBay", "Design", "YouTube"].map(
+          {["Meta Ads", "Shopify", "Amazon", "eBay", "Design"].map(
             (label, index) => (
               <span
                 key={label}
@@ -835,8 +828,8 @@ function SolutionSection() {
           </div>
           <div className="solution-media relative mt-9 aspect-[1.42] overflow-hidden rounded-[1.25rem] border border-white/10 bg-white/[0.04]">
             <Image
-              src="/builtbyskills-mentorship.png"
-              alt="AI visual of live digital skills mentorship dashboards"
+              src="/img/liiive-bindinng.jpeg"
+              alt="Live class and mentorship visual for Builtbyskills training"
               fill
               sizes="(min-width: 1024px) 690px, 92vw"
               className="object-cover"
@@ -941,7 +934,7 @@ function SkillsSection({
 
         <div className="relative mt-12 aspect-[2.2] min-h-[260px] overflow-hidden rounded-[1.5rem] border border-[#111111]/12 bg-[#111111]" data-reveal>
           <Image
-            src="/builtbyskills-tracks.png"
+            src="/img/builtbyskills-tracks.png"
             alt="AI visual showing multiple digital skill tracks as abstract dashboards"
             fill
             sizes="(min-width: 1024px) 1500px, 100vw"
@@ -1124,20 +1117,32 @@ function TrustSection() {
             Why Thousands Are Choosing Skill-Based Careers
           </h2>
         </div>
-        <p className="text-lg leading-8 text-[#4b4b4b]" data-reveal>
-          Freelancing and digital skills are the fastest-growing career path
-          today. Meta Ads, Shopify, Amazon, eBay, Graphic Design, and YouTube
-          Automation — these are all skills with demand rising every day in the
-          global market. Builtbyskills gives you exactly the training that works
-          in the real market.
-        </p>
+        <div className="space-y-6" data-reveal>
+          <p className="text-lg leading-8 text-[#4b4b4b]">
+            Freelancing and digital skills are the fastest-growing career path
+            today. Meta Ads, Shopify, Amazon, eBay, and Graphic Design — these
+            are all skills with demand rising every day in the global market.
+            Builtbyskills gives you exactly the training that works in the real
+            market.
+          </p>
+          <div className="relative aspect-[1.65] overflow-hidden rounded-[1.2rem] border border-[#111111]/10 bg-[#111111] shadow-xl shadow-black/10">
+            <Image
+              src="/img/sales.jpeg"
+              alt="Sales and client growth visual for skill-based careers"
+              fill
+              sizes="(min-width: 1024px) 720px, 92vw"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#080808]/66 to-transparent" />
+          </div>
+        </div>
       </div>
 
       <div
         className="mx-auto mt-16 grid max-w-[1500px] gap-4 sm:grid-cols-2 lg:grid-cols-4"
         data-stagger
       >
-        <StatCard value={<AnimatedCounter value={6} />} label="In-Demand Tracks" />
+        <StatCard value={<AnimatedCounter value={5} />} label="In-Demand Tracks" />
         <StatCard value="Live" label="Interactive Learning" />
         <StatCard value="1:1" label="Guidance & Mentorship" />
         <StatCard value="Global" label="Client Opportunities" />
@@ -1238,7 +1243,7 @@ function FiverrMentorship() {
             </div>
             <div className="relative mt-6 aspect-[1.55] overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
               <Image
-                src="/builtbyskills-freelance.png"
+                src="/img/builtbyskills-freelance.png"
                 alt="AI visual of an abstract freelancing mentorship dashboard"
                 fill
                 sizes="(min-width: 1024px) 580px, 92vw"
@@ -1413,7 +1418,7 @@ function Footer() {
             <div>
               <p className="font-black uppercase text-[#b8ff3d]">Social</p>
               <div className="mt-5 grid gap-3">
-                {["Instagram", "Facebook", "YouTube", "LinkedIn"].map(
+                {["Instagram", "Facebook", "LinkedIn"].map(
                   (item) => (
                     <span key={item} className="text-sm font-semibold text-white/58">
                       {item}
