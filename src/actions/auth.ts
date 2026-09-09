@@ -1,0 +1,37 @@
+"use server"
+
+import { redirect } from "next/navigation"
+
+import { createSupabaseServerClient } from "@/lib/supabase/server"
+
+export async function signInAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "")
+  const password = String(formData.get("password") ?? "")
+  const supabase = await createSupabaseServerClient()
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+  if (error) {
+    redirect(`/login?error=${encodeURIComponent(error.message)}`)
+  }
+
+  redirect("/admin")
+}
+
+export async function signOutAction() {
+  const supabase = await createSupabaseServerClient()
+  await supabase.auth.signOut()
+  redirect("/login")
+}
+
+export async function forgotPasswordAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "")
+  const supabase = await createSupabaseServerClient()
+  const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/forgot-password`
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+
+  if (error) {
+    redirect(`/forgot-password?error=${encodeURIComponent(error.message)}`)
+  }
+
+  redirect("/forgot-password?sent=1")
+}
