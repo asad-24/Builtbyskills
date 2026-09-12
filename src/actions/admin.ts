@@ -16,6 +16,7 @@ import {
   paymentMethodSchema,
   paymentReviewSchema,
   sectionSchema,
+  skillSchema,
   splitLines,
   studentSchema,
 } from "@/lib/validations/lms"
@@ -166,7 +167,7 @@ export async function createStudentAction(_: ActionState | undefined, formData: 
     const env = getOptionalServerEnv()
     const invite = await supabase.auth.admin.inviteUserByEmail(parsed.email, {
       data: { full_name: parsed.full_name, role: "student" },
-      redirectTo: `${env.siteUrl}/forgot-password`,
+      redirectTo: `${env.siteUrl}/auth/callback`,
     })
 
     if (invite.error && !invite.error.message.toLowerCase().includes("already")) {
@@ -195,7 +196,7 @@ export async function createStudentAction(_: ActionState | undefined, formData: 
     await sendTransactionalEmail({
       to: parsed.email,
       subject: "Activate your Builtbyskills account",
-      html: emailTemplates.accountActivation({ name: parsed.full_name, actionUrl: `${env.siteUrl}/forgot-password` }),
+      html: emailTemplates.accountActivation({ name: parsed.full_name, actionUrl: `${env.siteUrl}/auth/callback` }),
     })
     revalidatePath("/admin/students")
     return ok("Student created and activation email queued.")
@@ -317,6 +318,19 @@ export async function reviewPaymentAction(_: ActionState | undefined, formData: 
           .from("enrollment_requests")
           .update({ status: "active" })
           .eq("id", request.data.id)
+
+        try {
+          await sendTransactionalEmail({
+            to: request.data.email,
+            subject: "Builtbyskills payment approved",
+            html: emailTemplates.paymentApproved({
+              name: request.data.full_name,
+              courseTitle: payment.courses?.title,
+            }),
+          })
+        } catch (emailError) {
+          console.error("Payment approval email failed:", emailError)
+        }
       }
     }
 
@@ -388,5 +402,83 @@ export async function createAnnouncementAction(_: ActionState | undefined, formD
     return ok("Announcement created.")
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Announcement creation failed.")
+  }
+}
+
+export async function createSkillAction(_: ActionState | undefined, formData: FormData) {
+  try {
+    await requireAdmin()
+    const parsed = skillSchema.parse(formObject(formData))
+    const supabase = createSupabaseAdminClient()
+    const { data, error } = await supabase
+      .from("skills")
+      .insert({
+        ...parsed,
+        description: parsed.description ?? null,
+        image: parsed.image ?? null,
+        image_alt: parsed.image_alt ?? null,
+      })
+      .select("id")
+      .single()
+
+    if (error) return fail(error.message)
+    await audit("skill.created", "skill", data.id, { name: parsed.name })
+    revalidatePath("/admin/skills")
+    return ok("Skill created.")
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "Skill creation failed.")
+  }
+}
+
+export async function updateSkillAction(formData: FormData) {
+  try {
+    await requireAdmin()
+    const id = String(formData.get("id"))
+    const parsed = skillSchema.parse(formObject(formData))
+    const supabase = createSupabaseAdminClient()
+    const { error } = await supabase
+      .from("skills")
+      .update({
+        ...parsed,
+        description: parsed.description ?? null,
+        image: parsed.image ?? null,
+        image_alt: parsed.image_alt ?? null,
+      })
+      .eq("id", id)
+
+    if (error) throw new Error(error.message)
+    await audit("skill.updated", "skill", id, { name: parsed.name })
+    revalidatePath("/admin/skills")
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : "Skill update failed.")
+  }
+}
+
+export async function deleteSkillAction(formData: FormData) {
+  await requireAdmin()
+  const id = String(formData.get("id"))
+  const supabase = createSupabaseAdminClient()
+  const { error } = await supabase.from("skills").delete().eq("id", id)
+  if (error) throw new Error(error.message)
+  await audit("skill.deleted", "skill", id)
+  revalidatePath("/admin/skills")
+}
+
+export async function updateContactStatusAction(formData: FormData) {
+  try {
+    await requireAdmin()
+    const id = String(formData.get("id"))
+    const status = String(formData.get("status") ?? "").trim()
+    const supabase = createSupabaseAdminClient()
+    const { error } = await supabase
+      .from("contact_submissions")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", id)
+
+    if (error) throw new Error(error.message)
+    await audit("contact.status_updated", "contact_submission", id, { status })
+    revalidatePath("/admin/contact-submissions")
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : "Contact status update failed.")
   }
 }

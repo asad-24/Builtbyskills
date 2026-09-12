@@ -3,7 +3,7 @@ import "server-only"
 import { AppAuthError, AppForbiddenError, MissingEnvironmentError } from "@/lib/errors"
 import { requireAdmin } from "@/lib/auth/session"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
-import type { AdminStats, AppResult, Course, CourseWithCurriculum, Profile, SectionWithLessons } from "@/types/lms"
+import type { AdminStats, AppResult, Course, CourseWithCurriculum, Profile, SectionWithLessons, Skill } from "@/types/lms"
 
 type PersonRef = Pick<Profile, "id" | "full_name" | "email"> & Partial<Pick<Profile, "status">>
 type CourseRow = Course & { instructor?: PersonRef | null }
@@ -63,6 +63,7 @@ type ContactRow = Record<string, unknown> & {
   email: string
   phone: string | null
   subject: string | null
+  message: string
   status: string
   created_at: string
 }
@@ -116,7 +117,7 @@ function appError(error: unknown): AppResult<never> {
   }
 }
 
-async function countRows(supabase: ReturnType<typeof createSupabaseAdminClient>, table: string, filters: Record<string, string> = {}) {
+async function countRows(supabase: ReturnType<typeof createSupabaseAdminClient>, table: string, filters: Record<string, unknown> = {}) {
   let query = supabase.from(table).select("id", { count: "exact", head: true })
   Object.entries(filters).forEach(([key, value]) => {
     query = query.eq(key, value)
@@ -166,7 +167,7 @@ export async function getAdminWorkspaceData(): Promise<AppResult<AdminWorkspaceD
           if (error) throw error
           return count ?? 0
         }),
-      countRows(supabase, "lesson_progress", { is_completed: "true" }),
+      countRows(supabase, "lesson_progress", { is_completed: true }),
       supabase
         .from("courses")
         .select("*, instructor:profiles!courses_instructor_id_fkey(id, full_name, email)")
@@ -191,7 +192,7 @@ export async function getAdminWorkspaceData(): Promise<AppResult<AdminWorkspaceD
         .limit(50),
       supabase
         .from("payment_submissions")
-        .select("*, course:courses(title,slug), student:profiles(full_name,email)")
+        .select("*, course:courses(title,slug), student:profiles!payment_submissions_student_id_fkey(full_name,email)")
         .order("created_at", { ascending: false })
         .limit(50),
       supabase
@@ -354,6 +355,40 @@ export async function getEnrollmentPageData() {
         paymentMethods: paymentMethods.data ?? [],
       },
     }
+  } catch (error) {
+    return appError(error)
+  }
+}
+
+export async function getAdminSkills() {
+  try {
+    await requireAdmin()
+    const supabase = createSupabaseAdminClient()
+    const { data, error } = await supabase
+      .from("skills")
+      .select("*")
+      .order("position", { ascending: true })
+      .order("name", { ascending: true })
+
+    if (error) throw error
+    return { ok: true as const, data: (data ?? []) as Skill[] }
+  } catch (error) {
+    return appError(error)
+  }
+}
+
+export async function getPublicSkills() {
+  try {
+    const supabase = createSupabaseAdminClient()
+    const { data, error } = await supabase
+      .from("skills")
+      .select("*")
+      .eq("is_active", true)
+      .order("position", { ascending: true })
+      .order("name", { ascending: true })
+
+    if (error) throw error
+    return { ok: true as const, data: (data ?? []) as Skill[] }
   } catch (error) {
     return appError(error)
   }

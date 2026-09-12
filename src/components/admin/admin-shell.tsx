@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { BookOpen, CalendarDays, ClipboardList, FileClock, FileText, GraduationCap, LayoutDashboard, LogOut, Megaphone, ReceiptText, Settings, ShieldCheck, Users, WalletCards } from "lucide-react"
+import { BookOpen, CalendarDays, ClipboardList, FileClock, FileText, GraduationCap, LayoutDashboard, LogOut, Megaphone, ReceiptText, Settings, ShieldCheck, Users, WalletCards, Wrench } from "lucide-react"
 
 import { signOutAction } from "@/actions/auth"
 import { Button } from "@/components/ui/button"
@@ -10,10 +10,12 @@ const navItems = [
   { href: "/admin/students", label: "Students", icon: GraduationCap },
   { href: "/admin/instructors", label: "Instructors", icon: Users },
   { href: "/admin/courses", label: "Courses", icon: BookOpen },
+  { href: "/admin/skills", label: "Skills", icon: Wrench },
   { href: "/admin/enrollments", label: "Enrollments", icon: ClipboardList },
   { href: "/admin/payments", label: "Payments", icon: ReceiptText },
   { href: "/admin/live-classes", label: "Live Classes", icon: CalendarDays },
   { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
+  { href: "/admin/contact-submissions", label: "Contact Submissions", icon: FileText },
   { href: "/admin/website-content", label: "Website Content", icon: FileText },
   { href: "/admin/payment-settings", label: "Payment Settings", icon: WalletCards },
   { href: "/admin/reports", label: "Reports", icon: FileClock },

@@ -144,6 +144,20 @@ export type AdminStats = {
   completedLessons: number
 }
 
+export type Skill = {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  image: string | null
+  image_alt: string | null
+  icon_name: string
+  position: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export type AppResult<T> =
   | { ok: true; data: T }
   | { ok: false; reason: "missing_env" | "unauthorized" | "forbidden" | "error"; message: string }

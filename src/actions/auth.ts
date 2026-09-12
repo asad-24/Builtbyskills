@@ -14,7 +14,24 @@ export async function signInAction(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`)
   }
 
-  redirect("/admin")
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    redirect("/login?error=Session+not+established")
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("auth_user_id", user.id)
+    .single()
+
+  if (profile?.role === "instructor") {
+    redirect("/instructor")
+  } else if (profile?.role === "student") {
+    redirect("/student")
+  } else {
+    redirect("/admin")
+  }
 }
 
 export async function signOutAction() {

@@ -42,6 +42,11 @@ export const emailTemplates = {
       "Payment needs another review",
       `<p>Hi ${name ?? "there"}, your payment submission was rejected.</p><p><strong>Reason:</strong> ${reason ?? "Please upload a clearer or correct screenshot."}</p>`
     ),
+  paymentApproved: ({ name, courseTitle }: TemplateInput) =>
+    shell(
+      "Payment approved and enrollment confirmed",
+      `<p>Hi ${name ?? "there"}, your payment for <strong>${courseTitle ?? "your selected course"}</strong> has been approved.</p><p>Your enrollment is now confirmed. If you already have an account, you can sign in directly. If you were invited by email, use the account activation link from your invitation email to set your password and access your course.</p>`
+    ),
   accountActivation: ({ name, actionUrl }: TemplateInput) =>
     shell(
       "Activate your Builtbyskills account",

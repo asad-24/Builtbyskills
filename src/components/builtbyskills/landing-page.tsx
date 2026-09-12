@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type MouseEvent,
@@ -54,50 +55,47 @@ type Course = {
   className: string
 }
 
-const navLinks = [
-  { href: "#home", label: "Home" },
-  { href: "#why", label: "Why Builtbyskills" },
-  { href: "#skills", label: "Skills" },
-  { href: "#mentorship", label: "Mentorship" },
-  { href: "#about", label: "About" },
-  { href: "#contact", label: "Contact" },
-]
+type Skill = {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  image: string | null
+  image_alt: string | null
+  icon_name: string
+  position: number
+  is_active: boolean
+}
 
-const problems = [
-  "Took a course, but never understood the practical side",
-  "No platform to ask questions",
-  "Learned the skill, but no idea how to get clients",
-  "Just recorded videos, no real guidance",
-]
+const iconNameMap: Record<string, LucideIcon> = {
+  target: Target,
+  shoppingbag: ShoppingBag,
+  shopping: ShoppingBag,
+  packagecheck: PackageCheck,
+  package: PackageCheck,
+  badgecheck: BadgeCheck,
+  badge: BadgeCheck,
+  pentool: PenTool,
+  pen: PenTool,
+  compass: Compass,
+  users: Users,
+  galleryhorizontalend: GalleryHorizontalEnd,
+  gallery: GalleryHorizontalEnd,
+  trophy: Trophy,
+  messagesquare: MessageSquare,
+  message: MessageSquare,
+  rocket: Rocket,
+  circledollarsign: CircleDollarSign,
+  dollar: CircleDollarSign,
+  sparkles: Sparkles,
+}
 
-const pillars = [
-  {
-    number: "01",
-    title: "In-Demand Skills",
-    copy: "Digital Marketing, Shopify, Amazon, eBay, and Graphic Designing.",
-    icon: Compass,
-  },
-  {
-    number: "02",
-    title: "Live Interactive Classes",
-    copy: "Direct interaction, live questions, practical explanations, and no confusion left unresolved.",
-    icon: Users,
-  },
-  {
-    number: "03",
-    title: "Practical Projects & Portfolio",
-    copy: "Apply what you learn through practical work and create material you can show potential clients.",
-    icon: GalleryHorizontalEnd,
-  },
-  {
-    number: "04",
-    title: "Free Fiverr Mentorship",
-    copy: "Client-acquisition training and Fiverr guidance after completing the course.",
-    icon: Trophy,
-  },
-]
+function resolveIcon(name: string): LucideIcon {
+  const key = name.toLowerCase().replace(/[^a-z0-9]/g, "")
+  return iconNameMap[key] ?? Target
+}
 
-const courses: Course[] = [
+const fallbackCourses: Course[] = [
   {
     id: "digital-marketing",
     number: "01",
@@ -151,6 +149,49 @@ const courses: Course[] = [
   },
 ]
 
+const navLinks = [
+  { href: "#home", label: "Home" },
+  { href: "#why", label: "Why Builtbyskills" },
+  { href: "#skills", label: "Skills" },
+  { href: "#mentorship", label: "Mentorship" },
+  { href: "#about", label: "About" },
+  { href: "#contact", label: "Contact" },
+]
+
+const problems = [
+  "Took a course, but never understood the practical side",
+  "No platform to ask questions",
+  "Learned the skill, but no idea how to get clients",
+  "Just recorded videos, no real guidance",
+]
+
+const pillars = [
+  {
+    number: "01",
+    title: "In-Demand Skills",
+    copy: "Digital Marketing, Shopify, Amazon, eBay, and Graphic Designing.",
+    icon: Compass,
+  },
+  {
+    number: "02",
+    title: "Live Interactive Classes",
+    copy: "Direct interaction, live questions, practical explanations, and no confusion left unresolved.",
+    icon: Users,
+  },
+  {
+    number: "03",
+    title: "Practical Projects & Portfolio",
+    copy: "Apply what you learn through practical work and create material you can show potential clients.",
+    icon: GalleryHorizontalEnd,
+  },
+  {
+    number: "04",
+    title: "Free Fiverr Mentorship",
+    copy: "Client-acquisition training and Fiverr guidance after completing the course.",
+    icon: Trophy,
+  },
+]
+
 const journey = [
   { label: "Learn", icon: Sparkles },
   { label: "Practice", icon: PenTool },
@@ -181,9 +222,28 @@ export function BuiltBySkillsLandingPage() {
   const pageRef = useRef<HTMLDivElement>(null)
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [selectedTrack, setSelectedTrack] = useState(courses[0].id)
+  const [skills, setSkills] = useState<Skill[]>([])
+  const [showAllSkills, setShowAllSkills] = useState(false)
+  const [selectedTrack, setSelectedTrack] = useState<string>(fallbackCourses[0].id)
   const reducedMotion = useReducedMotion()
   const isMobile = useIsMobile()
+
+  useEffect(() => {
+    let cancelled = false
+
+    fetch("/api/skills")
+      .then((response) => response.json())
+      .then((data: Skill[]) => {
+        if (!cancelled) setSkills(Array.isArray(data) ? data : [])
+      })
+      .catch(() => {
+        if (!cancelled) setSkills([])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const updateHeader = () => setScrolled(window.scrollY > 24)
@@ -485,8 +545,27 @@ export function BuiltBySkillsLandingPage() {
     }
   }, [menuOpen])
 
+  const activeSkills = skills.filter((skill) => skill.is_active)
+  const displayCourses = useMemo(() => {
+    if (activeSkills.length > 0) {
+      return activeSkills.map((skill, index) => ({
+        id: skill.slug,
+        number: String(skill.position || index + 1).padStart(2, "0"),
+        title: skill.name,
+        description: skill.description || "",
+        icon: resolveIcon(skill.icon_name),
+        image: skill.image || "/img/builtbyskills-tracks.png",
+        imageAlt: skill.image_alt || skill.name,
+        className: "lg:col-span-4",
+      }))
+    }
+    return fallbackCourses
+  }, [activeSkills])
+
   const selectedCourse =
-    courses.find((course) => course.id === selectedTrack) ?? courses[0]
+    displayCourses.find((course) => course.id === selectedTrack) ??
+    displayCourses[0] ??
+    fallbackCourses[0]
 
   return (
     <div ref={pageRef} className="bg-[#080808] text-[#f7f7f2]">
@@ -501,9 +580,12 @@ export function BuiltBySkillsLandingPage() {
         <SkillsMarquee />
         <SolutionSection />
         <SkillsSection
+          courses={displayCourses}
           selectedCourse={selectedCourse}
           selectedTrack={selectedTrack}
           setSelectedTrack={setSelectedTrack}
+          showAll={showAllSkills}
+          onLoadMore={() => setShowAllSkills(true)}
         />
         <JourneySection />
         <TrustSection />
@@ -573,7 +655,7 @@ function Header({
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <MagneticButton href="#skills" className="min-h-10 px-5">
+          <MagneticButton href="/enroll" className="min-h-10 px-5">
             Join Now
           </MagneticButton>
         </div>
@@ -609,7 +691,7 @@ function Header({
             </Link>
           ))}
           <MagneticButton
-            href="#skills"
+            href="/enroll"
             className="mt-4 w-full"
             onClick={() => setMenuOpen(false)}
           >
@@ -672,7 +754,7 @@ function Hero() {
           </p>
 
           <div className="hero-actions mt-9 flex flex-col gap-3 sm:flex-row">
-            <MagneticButton href="#skills" className="min-h-14 px-7">
+            <MagneticButton href="/enroll" className="min-h-14 px-7">
               Select Your Platform — Join Now
             </MagneticButton>
             <MagneticButton href="#skills" tone="outline" className="min-h-14 px-7">
@@ -890,14 +972,22 @@ function SolutionSection() {
 }
 
 function SkillsSection({
+  courses,
   selectedCourse,
   selectedTrack,
   setSelectedTrack,
+  showAll,
+  onLoadMore,
 }: {
+  courses: Course[]
   selectedCourse: Course
   selectedTrack: string
   setSelectedTrack: (track: string) => void
+  showAll: boolean
+  onLoadMore: () => void
 }) {
+  const visibleCourses = showAll ? courses : courses.slice(0, 3)
+
   return (
     <section
       id="skills"
@@ -931,7 +1021,7 @@ function SkillsSection({
               ))}
             </div>
             <MagneticButton
-              href="#contact"
+              href="/enroll"
               tone="dark"
               className="mt-5 min-h-13"
             >
@@ -963,7 +1053,7 @@ function SkillsSection({
           className="mt-8 grid auto-rows-[minmax(290px,auto)] gap-4 md:grid-cols-2 lg:grid-cols-12"
           data-stagger
         >
-          {courses.map((course) => (
+          {visibleCourses.map((course) => (
             <CourseCard
               key={course.id}
               course={course}
@@ -972,6 +1062,18 @@ function SkillsSection({
             />
           ))}
         </div>
+
+        {!showAll && courses.length > 3 && (
+          <div className="mt-8 flex justify-center">
+            <button
+              type="button"
+              onClick={onLoadMore}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#111111] bg-[#111111] px-6 text-sm font-bold uppercase text-[#b8ff3d] transition-colors hover:bg-[#1a1a1a] hover:border-[#b8ff3d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8ff3d]"
+            >
+              Load More
+            </button>
+          </div>
+        )}
       </div>
     </section>
   )
@@ -1057,7 +1159,7 @@ function CourseCard({
             <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
           </button>
           <Link
-            href="#contact"
+            href="/enroll"
             className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#b8ff3d] px-4 text-sm font-black text-[#080808] transition-colors hover:bg-[#d7ff86] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8ff3d]"
           >
             Join Track
@@ -1358,7 +1460,7 @@ function FinalCTA() {
           today.
         </p>
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <MagneticButton href="#skills" className="min-h-14 px-8">
+          <MagneticButton href="/enroll" className="min-h-14 px-8">
             Book Your Seat Now
           </MagneticButton>
           <MagneticButton href="#skills" tone="outline" className="min-h-14 px-8">
@@ -1382,7 +1484,7 @@ function Footer() {
             <h2 className="max-w-4xl text-4xl font-black uppercase leading-[0.95] sm:text-5xl lg:text-6xl">
               Learn a skill. Get clients. Build your own business.
             </h2>
-            <MagneticButton href="#skills" className="mt-8">
+            <MagneticButton href="/enroll" className="mt-8">
               Join Now
             </MagneticButton>
           </div>

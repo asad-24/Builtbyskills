@@ -129,6 +129,20 @@ export const contactSchema = z.object({
   message: z.string().min(10),
 })
 
+export const skillSchema = z.object({
+  name: z.string().min(2),
+  slug: z
+    .string()
+    .min(3)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens."),
+  description: z.preprocess(emptyToUndefined, z.string().optional()),
+  image: z.preprocess(emptyToUndefined, z.string().url().or(z.string().startsWith("/")).optional()),
+  image_alt: z.preprocess(emptyToUndefined, z.string().optional()),
+  icon_name: z.string().min(2).default("target"),
+  position: z.coerce.number().int().min(0).default(0),
+  is_active: z.coerce.boolean().default(true),
+})
+
 export function splitLines(value?: string) {
   return value
     ?.split("\n")

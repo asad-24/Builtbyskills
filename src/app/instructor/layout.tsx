@@ -1,7 +1,8 @@
 import type { ReactNode } from "react"
+import { redirect } from "next/navigation"
 
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
-import { getCurrentProfile } from "@/lib/auth/session"
+import { requireRole } from "@/lib/auth/session"
 import { MissingEnvironmentError } from "@/lib/errors"
 
 const links = [
@@ -13,10 +14,15 @@ const links = [
 
 export default async function InstructorLayout({ children }: { children: ReactNode }) {
   let profile = null
+
   try {
-    profile = await getCurrentProfile()
+    profile = await requireRole(["instructor"])
   } catch (error) {
-    if (!(error instanceof MissingEnvironmentError)) throw error
+    if (error instanceof MissingEnvironmentError) {
+      return <DashboardShell profile={null} role="instructor" links={links}>{children}</DashboardShell>
+    }
+    redirect("/login")
   }
+
   return <DashboardShell profile={profile} role="instructor" links={links}>{children}</DashboardShell>
 }
