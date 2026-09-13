@@ -155,7 +155,7 @@ const navLinks = [
   { href: "#skills", label: "Skills" },
   { href: "#mentorship", label: "Mentorship" },
   { href: "#about", label: "About" },
-  { href: "#contact", label: "Contact" },
+  { href: "/contact", label: "Contact" },
 ]
 
 const problems = [
@@ -1514,9 +1514,9 @@ function Footer() {
                             ? "#mentorship"
                             : item === "About"
                               ? "#about"
-                              : item === "Contact"
-                                ? "#contact"
-                                : "#home"
+                               : item === "Contact"
+                                 ? "/contact"
+                                 : "#home"
                     }
                     className="text-sm font-semibold text-white/58 transition-colors hover:text-[#b8ff3d]"
                   >
