@@ -4,12 +4,12 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createBrowserClient } from "@supabase/ssr"
 
-export default function AuthCallbackPage() {
+export default function ResetPasswordPage() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    async function handleCallback() {
+    async function handleReset() {
       try {
         const supabase = createBrowserClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,7 +41,7 @@ export default function AuthCallbackPage() {
       }
     }
 
-    handleCallback()
+    handleReset()
   }, [router])
 
   if (error) {

@@ -16,7 +16,6 @@ import {
   paymentMethodSchema,
   paymentReviewSchema,
   sectionSchema,
-  skillSchema,
   splitLines,
   studentSchema,
 } from "@/lib/validations/lms"
@@ -43,6 +42,58 @@ async function audit(action: string, entityType: string, entityId: string | null
     entity_id: entityId,
     metadata,
   })
+}
+
+async function findAuthUserByEmail(
+  email: string,
+  supabaseUrl: string,
+  serviceRoleKey: string
+): Promise<{ id: string } | null> {
+  const baseUrl = supabaseUrl.replace(/\/$/, "")
+  const perPage = 50
+  let page = 1
+  let lastPage = 1
+
+  while (page <= lastPage) {
+    const url = `${baseUrl}/auth/v1/admin/users?page=${page}&per_page=${perPage}`
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
+
+    let response
+    try {
+      response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${serviceRoleKey}`,
+          "Content-Type": "application/json",
+        },
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
+
+    if (!response.ok) {
+      const text = await response.text()
+      throw new Error(`Auth lookup failed: ${response.status} ${text}`)
+    }
+
+    const json = await response.json()
+    const users = Array.isArray(json) ? json : Array.isArray(json?.users) ? json.users : []
+    const found = users.find((u: { email?: string }) => (u.email ?? "").toLowerCase() === email)
+    if (found) {
+      return { id: found.id }
+    }
+
+    const total = Number(response.headers.get("x-total-count") ?? "0")
+    if (total > 0 && perPage > 0) {
+      lastPage = Math.max(1, Math.ceil(total / perPage))
+    }
+
+    page++
+  }
+
+  return null
 }
 
 export async function createCourseAction(_: ActionState | undefined, formData: FormData) {
@@ -165,22 +216,88 @@ export async function createStudentAction(_: ActionState | undefined, formData: 
     const parsed = studentSchema.parse(formObject(formData))
     const supabase = createSupabaseAdminClient()
     const env = getOptionalServerEnv()
-    const invite = await supabase.auth.admin.inviteUserByEmail(parsed.email, {
-      data: { full_name: parsed.full_name, role: "student" },
-      redirectTo: `${env.siteUrl}/auth/callback`,
+
+    const normalizedEmail = parsed.email.trim().toLowerCase()
+
+    const { data: existingProfile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .maybeSingle()
+
+    if (profileError) return fail(profileError.message)
+
+    if (existingProfile) {
+      return fail("Student already registered")
+    }
+
+    let userId: string | null = null
+
+    const createUserResult = await supabase.auth.admin.createUser({
+      email: normalizedEmail,
+      email_confirm: true,
+      user_metadata: { full_name: parsed.full_name, role: "student" },
     })
 
-    if (invite.error && !invite.error.message.toLowerCase().includes("already")) {
-      return fail(invite.error.message)
+    if (createUserResult.error) {
+      if (createUserResult.error.code === "email_exists") {
+        const env = getOptionalServerEnv()
+
+        if (!env.supabaseUrl || !env.supabaseServiceRoleKey) {
+          return fail("Unable to verify existing auth user. Please try again.")
+        }
+
+        let existing: { id: string } | null = null
+        try {
+          existing = await findAuthUserByEmail(normalizedEmail, env.supabaseUrl, env.supabaseServiceRoleKey)
+        } catch {
+          return fail("Unable to verify existing auth user. Please try again.")
+        }
+
+        if (!existing) {
+          return fail("User already exists but could not be found in Auth.")
+        }
+
+        userId = existing.id
+      } else {
+        return fail(createUserResult.error.message)
+      }
+    } else {
+      userId = createUserResult.data.user.id
     }
+
+    const { data: profileAfterAuth, error: profileAfterAuthError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .maybeSingle()
+
+    if (profileAfterAuthError) return fail(profileAfterAuthError.message)
+
+    if (profileAfterAuth) {
+      return fail("Student already registered")
+    }
+
+    const linkResult = await supabase.auth.admin.generateLink({
+      type: "recovery",
+      email: normalizedEmail,
+    })
+
+    if (linkResult.error) return fail(linkResult.error.message)
+
+    const redirectTo = `${env.siteUrl}/auth/callback`
+    const baseLink = linkResult.data.properties.action_link
+    const inviteLink = baseLink.includes("?")
+      ? `${baseLink}&redirect_to=${encodeURIComponent(redirectTo)}`
+      : `${baseLink}?redirect_to=${encodeURIComponent(redirectTo)}`
 
     const { data, error } = await supabase
       .from("profiles")
       .upsert(
         {
-          auth_user_id: invite.data.user?.id ?? null,
+          auth_user_id: userId,
           full_name: parsed.full_name,
-          email: parsed.email,
+          email: normalizedEmail,
           phone: parsed.phone ?? null,
           whatsapp: parsed.whatsapp ?? null,
           role: "student",
@@ -192,12 +309,17 @@ export async function createStudentAction(_: ActionState | undefined, formData: 
       .single()
 
     if (error) return fail(error.message)
-    await audit("student.created", "profile", data.id, { email: parsed.email })
-    await sendTransactionalEmail({
-      to: parsed.email,
+    await audit("student.created", "profile", data.id, { email: normalizedEmail })
+    const emailResult = await sendTransactionalEmail({
+      to: normalizedEmail,
       subject: "Activate your Builtbyskills account",
-      html: emailTemplates.accountActivation({ name: parsed.full_name, actionUrl: `${env.siteUrl}/auth/callback` }),
+      html: emailTemplates.accountActivation({ name: parsed.full_name, actionUrl: inviteLink }),
     })
+
+    if (!emailResult.ok) {
+      return fail(emailResult.skipped ? "Email service is not configured." : emailResult.message)
+    }
+
     revalidatePath("/admin/students")
     return ok("Student created and activation email queued.")
   } catch (error) {
@@ -403,65 +525,6 @@ export async function createAnnouncementAction(_: ActionState | undefined, formD
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Announcement creation failed.")
   }
-}
-
-export async function createSkillAction(_: ActionState | undefined, formData: FormData) {
-  try {
-    await requireAdmin()
-    const parsed = skillSchema.parse(formObject(formData))
-    const supabase = createSupabaseAdminClient()
-    const { data, error } = await supabase
-      .from("skills")
-      .insert({
-        ...parsed,
-        description: parsed.description ?? null,
-        image: parsed.image ?? null,
-        image_alt: parsed.image_alt ?? null,
-      })
-      .select("id")
-      .single()
-
-    if (error) return fail(error.message)
-    await audit("skill.created", "skill", data.id, { name: parsed.name })
-    revalidatePath("/admin/skills")
-    return ok("Skill created.")
-  } catch (error) {
-    return fail(error instanceof Error ? error.message : "Skill creation failed.")
-  }
-}
-
-export async function updateSkillAction(formData: FormData) {
-  try {
-    await requireAdmin()
-    const id = String(formData.get("id"))
-    const parsed = skillSchema.parse(formObject(formData))
-    const supabase = createSupabaseAdminClient()
-    const { error } = await supabase
-      .from("skills")
-      .update({
-        ...parsed,
-        description: parsed.description ?? null,
-        image: parsed.image ?? null,
-        image_alt: parsed.image_alt ?? null,
-      })
-      .eq("id", id)
-
-    if (error) throw new Error(error.message)
-    await audit("skill.updated", "skill", id, { name: parsed.name })
-    revalidatePath("/admin/skills")
-  } catch (error) {
-    throw new Error(error instanceof Error ? error.message : "Skill update failed.")
-  }
-}
-
-export async function deleteSkillAction(formData: FormData) {
-  await requireAdmin()
-  const id = String(formData.get("id"))
-  const supabase = createSupabaseAdminClient()
-  const { error } = await supabase.from("skills").delete().eq("id", id)
-  if (error) throw new Error(error.message)
-  await audit("skill.deleted", "skill", id)
-  revalidatePath("/admin/skills")
 }
 
 export async function updateContactStatusAction(formData: FormData) {

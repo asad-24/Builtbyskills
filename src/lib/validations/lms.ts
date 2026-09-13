@@ -56,7 +56,10 @@ export const lessonSchema = z.object({
 
 export const studentSchema = z.object({
   full_name: z.string().min(3),
-  email: z.string().email(),
+  email: z.preprocess(
+    (val) => (typeof val === "string" ? val.trim() : val),
+    z.string().email()
+  ),
   phone: z.preprocess(emptyToUndefined, z.string().optional()),
   whatsapp: z.preprocess(emptyToUndefined, z.string().optional()),
   status: z.enum(["active", "inactive", "suspended"]).default("active"),
@@ -127,20 +130,6 @@ export const contactSchema = z.object({
   phone: z.preprocess(emptyToUndefined, z.string().optional()),
   subject: z.preprocess(emptyToUndefined, z.string().optional()),
   message: z.string().min(10),
-})
-
-export const skillSchema = z.object({
-  name: z.string().min(2),
-  slug: z
-    .string()
-    .min(3)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens."),
-  description: z.preprocess(emptyToUndefined, z.string().optional()),
-  image: z.preprocess(emptyToUndefined, z.string().url().or(z.string().startsWith("/")).optional()),
-  image_alt: z.preprocess(emptyToUndefined, z.string().optional()),
-  icon_name: z.string().min(2).default("target"),
-  position: z.coerce.number().int().min(0).default(0),
-  is_active: z.coerce.boolean().default(true),
 })
 
 export function splitLines(value?: string) {

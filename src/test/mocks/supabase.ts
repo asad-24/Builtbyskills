@@ -23,6 +23,9 @@ export type SupabaseMock = {
     signOut: Mock
     resetPasswordForEmail: Mock
     admin: {
+      createUser: Mock
+      generateLink: Mock
+      listUsers: Mock
       inviteUserByEmail: Mock
     }
   }
@@ -75,6 +78,9 @@ export function createSupabaseMock(): SupabaseMockFactory {
       signOut: vi.fn().mockResolvedValue({ error: null }),
       resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
       admin: {
+        createUser: vi.fn().mockResolvedValue({ data: { user: { id: "new-user-1" } }, error: null }),
+        generateLink: vi.fn().mockResolvedValue({ data: { properties: { action_link: "" } }, error: null }),
+        listUsers: vi.fn().mockResolvedValue({ data: { users: [] as Array<{ id: string; email: string }> }, error: null }),
         inviteUserByEmail: vi.fn().mockResolvedValue({ data: null, error: null }),
       },
     },

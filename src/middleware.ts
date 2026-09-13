@@ -6,6 +6,7 @@ const PUBLIC_ROUTE_PREFIXES = [
   "/",
   "/login",
   "/forgot-password",
+  "/reset-password",
   "/courses",
   "/contact",
   "/about",

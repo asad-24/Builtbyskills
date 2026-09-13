@@ -3,7 +3,7 @@ import "server-only"
 import { AppAuthError, AppForbiddenError, MissingEnvironmentError } from "@/lib/errors"
 import { requireAdmin } from "@/lib/auth/session"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
-import type { AdminStats, AppResult, Course, CourseWithCurriculum, Profile, SectionWithLessons, Skill } from "@/types/lms"
+import type { AdminStats, AppResult, Course, CourseWithCurriculum, Profile, SectionWithLessons } from "@/types/lms"
 
 type PersonRef = Pick<Profile, "id" | "full_name" | "email"> & Partial<Pick<Profile, "status">>
 type CourseRow = Course & { instructor?: PersonRef | null }
@@ -355,40 +355,6 @@ export async function getEnrollmentPageData() {
         paymentMethods: paymentMethods.data ?? [],
       },
     }
-  } catch (error) {
-    return appError(error)
-  }
-}
-
-export async function getAdminSkills() {
-  try {
-    await requireAdmin()
-    const supabase = createSupabaseAdminClient()
-    const { data, error } = await supabase
-      .from("skills")
-      .select("*")
-      .order("position", { ascending: true })
-      .order("name", { ascending: true })
-
-    if (error) throw error
-    return { ok: true as const, data: (data ?? []) as Skill[] }
-  } catch (error) {
-    return appError(error)
-  }
-}
-
-export async function getPublicSkills() {
-  try {
-    const supabase = createSupabaseAdminClient()
-    const { data, error } = await supabase
-      .from("skills")
-      .select("*")
-      .eq("is_active", true)
-      .order("position", { ascending: true })
-      .order("name", { ascending: true })
-
-    if (error) throw error
-    return { ok: true as const, data: (data ?? []) as Skill[] }
   } catch (error) {
     return appError(error)
   }
