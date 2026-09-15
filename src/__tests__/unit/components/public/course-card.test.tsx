@@ -68,4 +68,11 @@ describe("CourseCard", () => {
     render(<CourseCard course={{ ...mockCourse, thumbnail_url: "" }} />)
     expect(screen.queryByRole("img")).not.toBeInTheDocument()
   })
+
+  it("renders local /img/... thumbnail", () => {
+    render(<CourseCard course={{ ...mockCourse, thumbnail_url: "/img/course-shopify.png" }} />)
+    const image = screen.getByRole("img", { name: "Shopify Mastery thumbnail" })
+    expect(image).toBeInTheDocument()
+    expect(image).toHaveAttribute("src", "/img/course-shopify.png")
+  })
 })

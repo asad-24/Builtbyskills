@@ -65,6 +65,15 @@ export const studentSchema = z.object({
   status: z.enum(["active", "inactive", "suspended"]).default("active"),
 })
 
+export const instructorSchema = z.object({
+  full_name: z.string().min(3),
+  email: z.preprocess(
+    (val) => (typeof val === "string" ? val.trim() : val),
+    z.string().email()
+  ),
+  status: z.enum(["active", "inactive", "suspended"]).default("active"),
+})
+
 export const assignCourseSchema = z.object({
   student_id: z.string().uuid(),
   course_id: z.string().uuid(),

@@ -18,7 +18,7 @@ export default async function AdminGeneralSettingsPage() {
           ["Site URL", "NEXT_PUBLIC_SITE_URL", "Vercel environment variables"],
           ["Supabase", "Project URL, anon key, service role key", "Supabase project and Vercel"],
           ["Mux", "Token, secret, signing key ID, private key", "Mux dashboard and Vercel"],
-          ["Email", "RESEND_API_KEY and EMAIL_FROM", "Resend and Vercel"],
+          ["Email", "BREVO_API_KEY, EMAIL_FROM; optional EMAIL_FROM_NAME", "Brevo API and Vercel"],
           ["Monitoring", "NEXT_PUBLIC_SENTRY_DSN", "Sentry and Vercel"],
         ]}
       />

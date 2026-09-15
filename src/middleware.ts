@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { getPublicEnv } from "@/lib/env"
 
-const PUBLIC_ROUTE_PREFIXES = [
+const PUBLIC_ROUTES = new Set([
   "/",
   "/login",
   "/forgot-password",
@@ -10,13 +10,17 @@ const PUBLIC_ROUTE_PREFIXES = [
   "/courses",
   "/contact",
   "/about",
+  "/how-to-join",
+  "/enroll",
+  "/privacy-policy",
+  "/terms",
   "/auth/callback",
-]
+])
 
 function isPublicRoute(pathname: string) {
-  return PUBLIC_ROUTE_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(prefix + "/")
-  )
+  const path = pathname.replace(/\/$/, "") || "/"
+  // Only the catalog has public descendants; similarly named routes are not public.
+  return PUBLIC_ROUTES.has(path) || path.startsWith("/courses/")
 }
 
 export async function middleware(request: NextRequest) {
@@ -74,6 +78,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|sitemap\\.xml/?$|robots\\.txt/?$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }

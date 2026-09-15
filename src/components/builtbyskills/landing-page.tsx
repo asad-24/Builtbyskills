@@ -223,7 +223,6 @@ export function BuiltBySkillsLandingPage() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [skills, setSkills] = useState<Skill[]>([])
-  const [showAllSkills, setShowAllSkills] = useState(false)
   const [selectedTrack, setSelectedTrack] = useState<string>(fallbackCourses[0].id)
   const reducedMotion = useReducedMotion()
   const isMobile = useIsMobile()
@@ -584,8 +583,6 @@ export function BuiltBySkillsLandingPage() {
           selectedCourse={selectedCourse}
           selectedTrack={selectedTrack}
           setSelectedTrack={setSelectedTrack}
-          showAll={showAllSkills}
-          onLoadMore={() => setShowAllSkills(true)}
         />
         <JourneySection />
         <TrustSection />
@@ -976,18 +973,12 @@ function SkillsSection({
   selectedCourse,
   selectedTrack,
   setSelectedTrack,
-  showAll,
-  onLoadMore,
 }: {
   courses: Course[]
   selectedCourse: Course
   selectedTrack: string
   setSelectedTrack: (track: string) => void
-  showAll: boolean
-  onLoadMore: () => void
 }) {
-  const visibleCourses = showAll ? courses : courses.slice(0, 3)
-
   return (
     <section
       id="skills"
@@ -1053,7 +1044,7 @@ function SkillsSection({
           className="mt-8 grid auto-rows-[minmax(290px,auto)] gap-4 md:grid-cols-2 lg:grid-cols-12"
           data-stagger
         >
-          {visibleCourses.map((course) => (
+          {courses.map((course) => (
             <CourseCard
               key={course.id}
               course={course}
@@ -1062,18 +1053,6 @@ function SkillsSection({
             />
           ))}
         </div>
-
-        {!showAll && courses.length > 3 && (
-          <div className="mt-8 flex justify-center">
-            <button
-              type="button"
-              onClick={onLoadMore}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#111111] bg-[#111111] px-6 text-sm font-bold uppercase text-[#b8ff3d] transition-colors hover:bg-[#1a1a1a] hover:border-[#b8ff3d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8ff3d]"
-            >
-              Load More
-            </button>
-          </div>
-        )}
       </div>
     </section>
   )

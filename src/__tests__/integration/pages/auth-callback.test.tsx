@@ -1,136 +1,96 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { StrictMode } from "react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createBrowserClient } from "@supabase/ssr"
-
-const mockPush = vi.fn()
-
-vi.mock("@supabase/ssr", () => ({
-  createBrowserClient: vi.fn(),
-}))
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-}))
-
-import { render, waitFor } from "@/test/utils/render"
+import { render, screen, waitFor } from "@/test/utils/render"
 import AuthCallbackPage from "@/app/auth/callback/page"
+import { recoveryError } from "@/lib/auth/password-recovery"
 
-describe("AuthCallbackPage", () => {
-  beforeEach(() => {
-    mockPush.mockClear()
-    vi.clearAllMocks()
+const { router } = vi.hoisted(() => ({ router: { replace: vi.fn() } }))
+vi.mock("next/navigation", () => ({ useRouter: () => router }))
+vi.mock("@supabase/ssr", () => ({ createBrowserClient: vi.fn() }))
+
+function setup(path: string) {
+  window.history.replaceState({}, "", path)
+  const auth = {
+    exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
+    verifyOtp: vi.fn().mockResolvedValue({ error: null }),
+    setSession: vi.fn().mockResolvedValue({ error: null }),
+    getUser: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
+  }
+  vi.mocked(createBrowserClient).mockReturnValue({ auth } as unknown as ReturnType<typeof createBrowserClient>)
+  return auth
+}
+
+describe("password callback (mocked Supabase)", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("exchanges a PKCE code once under Strict Mode and ignores external next", async () => {
+    const auth = setup("/auth/callback?code=test-code&next=https://evil.example")
+    render(<StrictMode><AuthCallbackPage /></StrictMode>)
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/reset-password"))
+    expect(auth.exchangeCodeForSession).toHaveBeenCalledExactlyOnceWith("test-code")
+    expect(auth.getUser).toHaveBeenCalledOnce()
+    expect(window.location.search).toBe("")
+    expect(createBrowserClient).toHaveBeenCalledWith(expect.any(String), expect.any(String),
+      { isSingleton: false, auth: { detectSessionInUrl: false } })
   })
 
-  it("redirects to /student for student role", async () => {
-    const mockSupabase = {
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: "user-1" } },
-        }),
-      },
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            single: vi.fn().mockResolvedValue({
-              data: { role: "student" },
-              error: null,
-            }),
-          })),
-        })),
-      })),
-    }
-
-    vi.mocked(createBrowserClient).mockReturnValue(mockSupabase as any)
-
+  it.each(["recovery", "invite"])("verifies a %s token hash", async (type) => {
+    const auth = setup("/auth/callback?token_hash=test-hash&type=" + type)
     render(<AuthCallbackPage />)
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/student")
-    })
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/reset-password"))
+    expect(auth.verifyOtp).toHaveBeenCalledWith({ token_hash: "test-hash", type })
   })
 
-  it("redirects to /instructor for instructor role", async () => {
-    const mockSupabase = {
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: "user-2" } },
-        }),
-      },
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            single: vi.fn().mockResolvedValue({
-              data: { role: "instructor" },
-              error: null,
-            }),
-          })),
-        })),
-      })),
-    }
-
-    vi.mocked(createBrowserClient).mockReturnValue(mockSupabase as any)
-
+  it.each(["recovery", "invite"])("establishes a %s session from Supabase's verified link fragment", async (type) => {
+    const auth = setup("/auth/callback#access_token=test-access&refresh_token=test-refresh&type=" + type)
     render(<AuthCallbackPage />)
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/instructor")
-    })
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/reset-password"))
+    expect(auth.setSession).toHaveBeenCalledWith({ access_token: "test-access", refresh_token: "test-refresh" })
+    expect(window.location.hash).toBe("")
   })
 
-  it("redirects to /admin for super_admin role", async () => {
-    const mockSupabase = {
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: "user-3" } },
-        }),
-      },
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            single: vi.fn().mockResolvedValue({
-              data: { role: "super_admin" },
-              error: null,
-            }),
-          })),
-        })),
-      })),
-    }
-
-    vi.mocked(createBrowserClient).mockReturnValue(mockSupabase as any)
-
+  it.each([
+    "/auth/callback", "/auth/callback?code=", "/auth/callback?type=recovery",
+    "/auth/callback?token_hash=test&type=signup",
+    "/auth/callback#error=access_denied&error_code=otp_expired&error_description=secret",
+    "/auth/callback#access_token=test&type=recovery",
+  ])("rejects missing/malformed/expired link %s even with an existing user", async (path) => {
+    const auth = setup(path)
     render(<AuthCallbackPage />)
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/admin")
-    })
+    expect(await screen.findByRole("alert")).toHaveTextContent(recoveryError)
+    expect(auth.getUser).not.toHaveBeenCalled()
+    expect(router.replace).not.toHaveBeenCalled()
+    expect(screen.queryByText("secret")).not.toBeInTheDocument()
   })
 
-  it("redirects to /login when no user", async () => {
-    const mockSupabase = {
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: null },
-        }),
-      },
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            single: vi.fn().mockResolvedValue({
-              data: null,
-              error: null,
-            }),
-          })),
-        })),
-      })),
+  it.each(["exchangeCodeForSession", "verifyOtp", "setSession"] as const)("fails safely when %s rejects invalid/expired/reused credentials", async (method) => {
+    const urls = {
+      exchangeCodeForSession: "/auth/callback?code=reused",
+      verifyOtp: "/auth/callback?token_hash=expired&type=recovery",
+      setSession: "/auth/callback#access_token=invalid&refresh_token=invalid&type=recovery",
     }
-
-    vi.mocked(createBrowserClient).mockReturnValue(mockSupabase as any)
-
+    const auth = setup(urls[method])
+    auth[method].mockResolvedValue({ error: { message: "sensitive internal message" } })
     render(<AuthCallbackPage />)
+    expect(await screen.findByRole("alert")).toHaveTextContent(recoveryError)
+    expect(auth.getUser).not.toHaveBeenCalled()
+    expect(router.replace).not.toHaveBeenCalled()
+  })
 
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/login?error=Session+not+established")
-    })
+  it("requires a verified user after exchange", async () => {
+    const auth = setup("/auth/callback?code=test")
+    auth.getUser.mockResolvedValue({ data: { user: null }, error: null })
+    render(<AuthCallbackPage />)
+    expect(await screen.findByRole("alert")).toHaveTextContent(recoveryError)
+    expect(router.replace).not.toHaveBeenCalled()
+  })
+
+  it("hides thrown exchange errors", async () => {
+    const auth = setup("/auth/callback?code=test")
+    auth.exchangeCodeForSession.mockRejectedValue(new Error("secret"))
+    render(<AuthCallbackPage />)
+    expect(await screen.findByRole("alert")).toHaveTextContent(recoveryError)
+    expect(router.replace).not.toHaveBeenCalled()
   })
 })

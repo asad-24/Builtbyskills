@@ -1,6 +1,7 @@
 import { createLessonAction, createSectionAction, updateCourseAction } from "@/actions/admin"
 import { ActionForm } from "@/components/admin/action-form"
 import { AdminTable, PageHeader, Panel, SelectField, SetupNotice, StatusBadge, TextAreaField, TextField } from "@/components/admin/admin-ui"
+import { ThumbnailUploadInput } from "@/components/admin/thumbnail-upload-input"
 import { getCourseBuilderData } from "@/features/admin/data"
 
 export const metadata = {
@@ -32,7 +33,7 @@ export default async function CourseBuilderPage({ params }: { params: Promise<{ 
               <TextField name="slug" label="Slug" defaultValue={course.slug} required />
               <TextField name="short_description" label="Short description" defaultValue={course.short_description} required />
               <TextAreaField name="description" label="Full description" defaultValue={course.description} required />
-              <TextField name="thumbnail_url" label="Thumbnail URL" defaultValue={course.thumbnail_url} />
+              <ThumbnailUploadInput name="thumbnail_url" defaultValue={course.thumbnail_url} />
               <TextField name="category" label="Category" defaultValue={course.category} required />
               <TextField name="level" label="Level" defaultValue={course.level} required />
               <TextField name="duration_text" label="Duration" defaultValue={course.duration_text} />

@@ -32,3 +32,19 @@ describe("emailTemplates", () => {
     expect(html).toContain("Supabase")
   })
 })
+
+describe("template escaping", () => {
+  it.each(["enrollmentReceived", "paymentApproved", "paymentRejected", "accountActivation"] as const)("escapes dynamic text in %s", (template) => {
+    const value = '<img src=x onerror="bad"> & \'text\''
+    const html = emailTemplates[template]({ name: value, courseTitle: value, reason: value })
+    expect(html).not.toContain(value)
+    expect(html).toContain("&lt;img src=x onerror=&quot;bad&quot;&gt; &amp; &#39;text&#39;")
+  })
+  it("preserves the decoded recovery URL while escaping attribute delimiters", () => {
+    const url = 'https://auth.example/verify?token=abc&type=recovery&redirect_to=https%3A%2F%2Fexample.com%2Fauth%2Fcallback'
+    const html = emailTemplates.accountActivation({ actionUrl: url })
+    const doc = new DOMParser().parseFromString(html, "text/html")
+    expect(doc.querySelector("a")?.getAttribute("href")).toBe(url)
+    expect(html).toContain("&amp;type=recovery")
+  })
+})

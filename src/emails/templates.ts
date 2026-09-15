@@ -7,6 +7,10 @@ type TemplateInput = {
   body?: string
 }
 
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+})[char]!)
+
 const shell = (heading: string, body: string) => `<!doctype html>
 <html>
   <body style="margin:0;background:#f6f7f9;color:#111827;font-family:Arial,sans-serif;">
@@ -25,35 +29,35 @@ export const emailTemplates = {
   enrollmentReceived: ({ name, courseTitle }: TemplateInput) =>
     shell(
       "Enrollment received",
-      `<p>Hi ${name ?? "there"}, your enrollment request for <strong>${courseTitle ?? "your selected course"}</strong> has been received.</p><p>Our team will review your payment and contact details shortly.</p>`
+      `<p>Hi ${escapeHtml(name ?? "there")}, your enrollment request for <strong>${escapeHtml(courseTitle ?? "your selected course")}</strong> has been received.</p><p>Our team will review your payment and contact details shortly.</p>`
     ),
   paymentReceived: ({ name, courseTitle }: TemplateInput) =>
     shell(
       "Payment screenshot received",
-      `<p>Hi ${name ?? "there"}, your payment submission for <strong>${courseTitle ?? "your course"}</strong> is now pending review.</p>`
+      `<p>Hi ${name ?? "there"}, your payment submission for <strong>${escapeHtml(courseTitle ?? "your course")}</strong> is now pending review.</p>`
     ),
   enrollmentApproved: ({ name, courseTitle, actionUrl }: TemplateInput) =>
     shell(
       "Your course access is approved",
-      `<p>Hi ${name ?? "there"}, your access to <strong>${courseTitle ?? "your course"}</strong> has been approved.</p>${actionUrl ? `<p><a href="${actionUrl}" style="color:#3f6212;font-weight:700;">Set your password</a></p>` : ""}`
+      `<p>Hi ${escapeHtml(name ?? "there")}, your access to <strong>${escapeHtml(courseTitle ?? "your course")}</strong> has been approved.</p>${actionUrl ? `<p><a href="${escapeHtml(actionUrl)}" style="color:#3f6212;font-weight:700;">Set your password</a></p>` : ""}`
     ),
   paymentRejected: ({ name, reason }: TemplateInput) =>
     shell(
       "Payment needs another review",
-      `<p>Hi ${name ?? "there"}, your payment submission was rejected.</p><p><strong>Reason:</strong> ${reason ?? "Please upload a clearer or correct screenshot."}</p>`
+      `<p>Hi ${escapeHtml(name ?? "there")}, your payment submission was rejected.</p><p><strong>Reason:</strong> ${escapeHtml(reason ?? "Please upload a clearer or correct screenshot.")}</p>`
     ),
   paymentApproved: ({ name, courseTitle }: TemplateInput) =>
     shell(
       "Payment approved and enrollment confirmed",
-      `<p>Hi ${name ?? "there"}, your payment for <strong>${courseTitle ?? "your selected course"}</strong> has been approved.</p><p>Your enrollment is now confirmed. If you already have an account, you can sign in directly. If you were invited by email, use the account activation link from your invitation email to set your password and access your course.</p>`
+      `<p>Hi ${escapeHtml(name ?? "there")}, your payment for <strong>${escapeHtml(courseTitle ?? "your selected course")}</strong> has been approved.</p><p>Your enrollment is now confirmed. If you already have an account, you can sign in directly. If you were invited by email, use the account activation link from your invitation email to set your password and access your course.</p>`
     ),
   accountActivation: ({ name, actionUrl }: TemplateInput) =>
     shell(
       "Activate your Builtbyskills account",
-      `<p>Hi ${name ?? "there"}, your student account is ready.</p>${actionUrl ? `<p><a href="${actionUrl}" style="color:#3f6212;font-weight:700;">Set your password</a></p>` : ""}`
+      `<p>Hi ${escapeHtml(name ?? "there")}, your student account is ready.</p>${actionUrl ? `<p><a href="${escapeHtml(actionUrl)}" style="color:#3f6212;font-weight:700;">Set your password</a></p>` : ""}`
     ),
   passwordReset: ({ actionUrl }: TemplateInput) =>
-    shell("Reset your password", actionUrl ? `<p><a href="${actionUrl}" style="color:#3f6212;font-weight:700;">Reset password</a></p>` : "<p>Use the password reset link sent by Supabase.</p>"),
+    shell("Reset your password", actionUrl ? `<p><a href="${escapeHtml(actionUrl)}" style="color:#3f6212;font-weight:700;">Reset password</a></p>` : "<p>Use the password reset link sent by Supabase.</p>"),
   liveClassReminder: ({ title, body }: TemplateInput) =>
     shell(title ?? "Upcoming live class", `<p>${body ?? "You have an upcoming Builtbyskills live class."}</p>`),
   newAnnouncement: ({ title, body }: TemplateInput) =>

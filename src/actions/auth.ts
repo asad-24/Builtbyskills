@@ -47,7 +47,7 @@ export async function forgotPasswordAction(formData: FormData) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
 
   if (error) {
-    redirect(`/forgot-password?error=${encodeURIComponent(error.message)}`)
+    redirect(`/forgot-password?error=${encodeURIComponent("Unable to send a reset link. Please try again.")}`)
   }
 
   redirect("/forgot-password?sent=1")

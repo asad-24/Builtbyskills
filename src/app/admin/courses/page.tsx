@@ -4,6 +4,7 @@ import { createCourseAction, deleteCourseAction } from "@/actions/admin"
 import { ActionForm } from "@/components/admin/action-form"
 import { AdminTable, BuilderLink, PageHeader, Panel, SelectField, SetupNotice, StatusBadge, TextAreaField, TextField } from "@/components/admin/admin-ui"
 import { Button } from "@/components/ui/button"
+import { ThumbnailUploadInput } from "@/components/admin/thumbnail-upload-input"
 import { getAdminWorkspaceData } from "@/features/admin/data"
 import { formatMoney } from "@/lib/format"
 
@@ -49,7 +50,7 @@ export default async function AdminCoursesPage() {
             <TextField name="slug" label="Slug" required placeholder="shopify-and-tiktok-ads" />
             <TextField name="short_description" label="Short description" required />
             <TextAreaField name="description" label="Full description" required />
-            <TextField name="thumbnail_url" label="Thumbnail URL" placeholder="/img/course-shopify.png" />
+            <ThumbnailUploadInput name="thumbnail_url" />
             <div className="grid gap-3 sm:grid-cols-2">
               <TextField name="category" label="Category" required />
               <TextField name="level" label="Level" required />

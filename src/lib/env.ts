@@ -20,7 +20,7 @@ const muxKeys = [
 ] as const
 
 const emailKeys = [
-  "RESEND_API_KEY",
+  "BREVO_API_KEY",
   "EMAIL_FROM",
 ] as const
 
@@ -51,8 +51,9 @@ export function getServerEnv() {
     muxTokenSecret: process.env.MUX_TOKEN_SECRET,
     muxSigningKeyId: process.env.MUX_SIGNING_KEY_ID,
     muxSigningPrivateKey: process.env.MUX_SIGNING_PRIVATE_KEY,
-    resendApiKey: process.env.RESEND_API_KEY,
+    brevoApiKey: process.env.BREVO_API_KEY,
     emailFrom: process.env.EMAIL_FROM,
+    emailFromName: process.env.EMAIL_FROM_NAME,
     sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   }
 
@@ -67,8 +68,9 @@ export function getServerEnv() {
     muxTokenSecret: string
     muxSigningKeyId: string
     muxSigningPrivateKey: string
-    resendApiKey: string
+    brevoApiKey: string
     emailFrom: string
+    emailFromName: string
   }
 }
 
@@ -120,8 +122,9 @@ export function getOptionalServerEnv() {
     muxTokenSecret: process.env.MUX_TOKEN_SECRET,
     muxSigningKeyId: process.env.MUX_SIGNING_KEY_ID,
     muxSigningPrivateKey: process.env.MUX_SIGNING_PRIVATE_KEY,
-    resendApiKey: process.env.RESEND_API_KEY,
+    brevoApiKey: process.env.BREVO_API_KEY,
     emailFrom: process.env.EMAIL_FROM,
+    emailFromName: process.env.EMAIL_FROM_NAME,
     sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   }
 }
