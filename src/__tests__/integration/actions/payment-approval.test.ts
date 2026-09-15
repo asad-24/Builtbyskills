@@ -57,7 +57,7 @@ describe("payment approval orchestration (mocked Auth, RPC and email)", () => {
       type: "recovery", email: prepared.email, options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
     })
     expect(sendTransactionalEmail).toHaveBeenCalledOnce()
-    expect(vi.mocked(sendTransactionalEmail).mock.calls[0][0].html).toContain('href="https://auth.example/verify?token=test&redirect_to=callback"')
+    expect(vi.mocked(sendTransactionalEmail).mock.calls[0][0].html).toContain('href="https://auth.example/verify?token=test&amp;redirect_to=callback"')
     expect(rpc.mock.invocationCallOrder[1]).toBeLessThan(mock.auth.admin.generateLink.mock.invocationCallOrder[0])
     expect(mock.from("profiles").upsert).not.toHaveBeenCalled()
   })

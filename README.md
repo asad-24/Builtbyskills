@@ -8,7 +8,7 @@ Builtbyskills is a Next.js App Router academy and LMS for practical digital skil
 - Tailwind CSS 4 and shadcn/ui
 - Supabase PostgreSQL, Auth, RLS, and Storage
 - Mux direct uploads and signed playback
-- Resend transactional email helpers
+- Brevo API transactional email helpers
 - Vercel Analytics and Sentry-ready error boundaries
 
 ## Local Setup
@@ -29,8 +29,9 @@ Fill `.env.local` with:
 - `MUX_TOKEN_SECRET`
 - `MUX_SIGNING_KEY_ID`
 - `MUX_SIGNING_PRIVATE_KEY`
-- `RESEND_API_KEY`
+- `BREVO_API_KEY`
 - `EMAIL_FROM`
+- `EMAIL_FROM_NAME` (optional)
 - `NEXT_PUBLIC_SENTRY_DSN`
 
 Never commit real secrets.
@@ -90,3 +91,5 @@ npm run build
 - Add richer Website Content editing tables for homepage copy.
 - Add scheduled live-class reminder jobs.
 - Add Sentry project initialization files once the production Sentry project exists.
+
+Custom application email uses the Brevo transactional API with server-only `BREVO_API_KEY` and a verified sender email in `EMAIL_FROM`. Optional `EMAIL_FROM_NAME` sets the display name. Use an API key, not the SMTP key configured in Supabase. Supabase Auth Forgot Password continues to use its existing custom SMTP configuration.

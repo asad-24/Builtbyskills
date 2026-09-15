@@ -315,7 +315,8 @@ export async function createStudentAction(_: ActionState | undefined, formData: 
     })
 
     if (!emailResult.ok) {
-      return fail(emailResult.skipped ? "Email service is not configured." : emailResult.message)
+      revalidatePath("/admin/students")
+      return ok("Student account was created, but the activation email was not sent or delivery could not be confirmed. The student can use Forgot Password to set their password.")
     }
 
     revalidatePath("/admin/students")

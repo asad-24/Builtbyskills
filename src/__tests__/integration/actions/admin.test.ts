@@ -252,7 +252,7 @@ describe("admin actions", () => {
       expect(mock.from("profiles").upsert).toHaveBeenCalledWith(expect.objectContaining({
         auth_user_id: "auth-new", email: "new@example.com", role, status: "active",
       }), { onConflict: "email" })
-      expect(vi.mocked(sendTransactionalEmail).mock.calls[0][0].html).toContain(`href="${actionLink}"`)
+      expect(vi.mocked(sendTransactionalEmail).mock.calls[0][0].html).toContain(`href="${actionLink.replaceAll("&", "&amp;")}"`)
       expect(vi.mocked(sendTransactionalEmail).mock.calls[0][0].html.match(/redirect_to=/g)).toHaveLength(1)
     })
 
@@ -301,11 +301,12 @@ describe("admin actions", () => {
         options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
       })
       expect(mock.auth.admin.inviteUserByEmail).not.toHaveBeenCalled()
+      expect(mock.from("profiles").upsert.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(sendTransactionalEmail).mock.invocationCallOrder[0])
       expect(mock.from("profiles").upsert).toHaveBeenCalled()
       expect(sendTransactionalEmail).toHaveBeenCalled()
       expect((sendTransactionalEmail as any).mock.calls[0]?.[0]?.to).toBe("newstudent@example.com")
       expect((sendTransactionalEmail as any).mock.calls[0]?.[0]?.subject).toBe("Activate your Builtbyskills account")
-      expect((sendTransactionalEmail as any).mock.calls[0]?.[0]?.html).toContain('href="https://example.supabase.co/auth/v1/verify?token=test&type=recovery"')
+      expect((sendTransactionalEmail as any).mock.calls[0]?.[0]?.html).toContain('href="https://example.supabase.co/auth/v1/verify?token=test&amp;type=recovery"')
     })
 
     it("returns 'Student already registered' when profile already exists", async () => {
@@ -658,7 +659,7 @@ describe("admin actions", () => {
       expect(result).toEqual({ ok: false, message: "Student already registered" })
     })
 
-    it("returns failure when Resend email sending fails", async () => {
+    it("reports saved account when email sending fails", async () => {
       const { mock, tableChains } = createSupabaseMock()
       mock.from("profiles")
       tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: null, error: null })
@@ -679,7 +680,7 @@ describe("admin actions", () => {
       })
       vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
 
-      const sendTransactionalEmailError = new Error("Resend API error")
+      const sendTransactionalEmailError = new Error("Brevo API error")
       vi.mocked(sendTransactionalEmail).mockResolvedValueOnce({
         ok: false,
         skipped: false,
@@ -697,12 +698,12 @@ describe("admin actions", () => {
       const result = await createStudentAction(undefined, formData)
 
       expect(result).toEqual({
-        ok: false,
-        message: "Resend API error",
+        ok: true,
+        message: "Student account was created, but the activation email was not sent or delivery could not be confirmed. The student can use Forgot Password to set their password.",
       })
     })
 
-    it("returns failure when Resend is not configured", async () => {
+    it("reports saved account when email is not configured", async () => {
       const { mock, tableChains } = createSupabaseMock()
       mock.from("profiles")
       tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: null, error: null })
@@ -726,7 +727,7 @@ describe("admin actions", () => {
       vi.mocked(sendTransactionalEmail).mockResolvedValueOnce({
         ok: false,
         skipped: true,
-        message: "Resend is not configured.",
+        message: "Email service is not configured.",
         emailId: null,
       })
 
@@ -740,8 +741,8 @@ describe("admin actions", () => {
       const result = await createStudentAction(undefined, formData)
 
       expect(result).toEqual({
-        ok: false,
-        message: "Email service is not configured.",
+        ok: true,
+        message: "Student account was created, but the activation email was not sent or delivery could not be confirmed. The student can use Forgot Password to set their password.",
       })
     })
   })
