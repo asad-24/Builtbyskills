@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 
 import { emailTemplates } from "@/emails/templates"
 import { requireAdmin } from "@/lib/auth/session"
+import { approvePayment } from "@/lib/payments/approve"
 import { getOptionalServerEnv } from "@/lib/env"
 import { sendTransactionalEmail } from "@/lib/email/send"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
@@ -281,15 +282,12 @@ export async function createStudentAction(_: ActionState | undefined, formData: 
     const linkResult = await supabase.auth.admin.generateLink({
       type: "recovery",
       email: normalizedEmail,
+      options: { redirectTo: `${env.siteUrl}/auth/callback` },
     })
 
     if (linkResult.error) return fail(linkResult.error.message)
 
-    const redirectTo = `${env.siteUrl}/auth/callback`
-    const baseLink = linkResult.data.properties.action_link
-    const inviteLink = baseLink.includes("?")
-      ? `${baseLink}&redirect_to=${encodeURIComponent(redirectTo)}`
-      : `${baseLink}?redirect_to=${encodeURIComponent(redirectTo)}`
+    const inviteLink = linkResult.data.properties.action_link
 
     const { data, error } = await supabase
       .from("profiles")
@@ -380,100 +378,66 @@ export async function createPaymentMethodAction(_: ActionState | undefined, form
 export async function reviewPaymentAction(_: ActionState | undefined, formData: FormData) {
   try {
     const admin = await requireAdmin()
-    const parsed = paymentReviewSchema.parse(formObject(formData))
+    const parsedResult = paymentReviewSchema.safeParse(formObject(formData))
+    if (!parsedResult.success) return fail("Choose a valid payment and review status.")
+    const parsed = parsedResult.data
     const supabase = createSupabaseAdminClient()
+    if (parsed.status === "approved") {
+      const result = await approvePayment(supabase, parsed.payment_id, admin.id)
+      revalidatePath("/admin/payments")
+      revalidatePath("/admin/enrollments")
+      revalidatePath("/admin/students")
+      return result
+    }
+
     const { data: payment, error: paymentError } = await supabase
-      .from("payment_submissions")
-      .select("*, courses(title), profiles(full_name,email)")
-      .eq("id", parsed.payment_id)
-      .single()
+      .from("payment_submissions").select("id, status").eq("id", parsed.payment_id).single()
+    if (paymentError || !payment) return fail("Payment not found.")
+    if (payment.status === parsed.status) return ok("Payment already has this status.")
+    // Keep existing review/refund operations, but never race an approval into a
+    // rejected/under-review state or reopen a refunded payment.
+    const allowed = parsed.status === "refunded"
+      ? payment.status === "approved"
+      : ["pending", "under_review", "rejected"].includes(payment.status)
+    if (!allowed) return fail("Invalid payment status transition.")
 
-    if (paymentError || !payment) return fail(paymentError?.message ?? "Payment not found.")
-    const { error } = await supabase
-      .from("payment_submissions")
-      .update({
-        status: parsed.status,
-        rejection_reason: parsed.status === "rejected" ? parsed.rejection_reason ?? "Payment rejected." : null,
-        reviewed_by: admin.id,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", parsed.payment_id)
+    const request = await supabase.from("enrollment_requests").select("*")
+      .eq("payment_submission_id", parsed.payment_id).maybeSingle()
+    if (request.error) return fail("Unable to read the enrollment request.")
+    const { data: updated, error } = await supabase.from("payment_submissions").update({
+      status: parsed.status,
+      rejection_reason: parsed.status === "rejected" ? parsed.rejection_reason ?? "Payment rejected." : null,
+      reviewed_by: admin.id, reviewed_at: new Date().toISOString(),
+    }).eq("id", parsed.payment_id).eq("status", payment.status).select("id").maybeSingle()
+    if (error || !updated) return fail("Payment changed during review or could not be saved. Refresh and retry.")
 
-    if (error) return fail(error.message)
-
-    const request = await supabase
-      .from("enrollment_requests")
-      .select("*")
-      .eq("payment_submission_id", parsed.payment_id)
-      .maybeSingle()
-
-    if (parsed.status === "approved" && request.data) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .upsert(
-          {
-            full_name: request.data.full_name,
-            email: request.data.email,
-            phone: request.data.phone,
-            whatsapp: request.data.whatsapp,
-            role: "student",
-            status: "active",
-          },
-          { onConflict: "email" }
-        )
-        .select("id")
-        .single()
-
-      if (profile) {
-        await supabase.from("enrollments").upsert(
-          {
-            student_id: profile.id,
-            course_id: request.data.course_id,
-            status: "active",
-            enrolled_at: new Date().toISOString(),
-            starts_at: new Date().toISOString(),
-            assigned_by: admin.id,
-          },
-          { onConflict: "student_id,course_id" }
-        )
-        await supabase
-          .from("enrollment_requests")
-          .update({ status: "active" })
-          .eq("id", request.data.id)
-
-        try {
-          await sendTransactionalEmail({
-            to: request.data.email,
-            subject: "Builtbyskills payment approved",
-            html: emailTemplates.paymentApproved({
-              name: request.data.full_name,
-              courseTitle: payment.courses?.title,
-            }),
-          })
-        } catch (emailError) {
-          console.error("Payment approval email failed:", emailError)
-        }
-      }
-    }
-
+    let warning = ""
     if (parsed.status === "rejected" && request.data) {
-      await supabase
-        .from("enrollment_requests")
-        .update({ status: "pending" })
-        .eq("id", request.data.id)
-      await sendTransactionalEmail({
-        to: request.data.email,
-        subject: "Builtbyskills payment review update",
-        html: emailTemplates.paymentRejected({ name: request.data.full_name, reason: parsed.rejection_reason }),
-      })
+      // A delayed rejection must not overwrite a request activated by a later approval.
+      const { error: requestError } = await supabase.from("enrollment_requests")
+        .update({ status: "pending" }).eq("id", request.data.id).eq("status", "pending")
+      if (requestError) warning = " Request status could not be updated."
+      try {
+        const email = await sendTransactionalEmail({
+          to: request.data.email,
+          subject: "Builtbyskills payment review update",
+          html: emailTemplates.paymentRejected({ name: request.data.full_name, reason: parsed.rejection_reason }),
+        })
+        if (!email.ok) warning += " Review email could not be delivered."
+      } catch { warning += " Review email could not be delivered." }
     }
-
-    await audit("payment.reviewed", "payment_submission", parsed.payment_id, parsed)
+    try {
+      const { error: auditError } = await supabase.from("audit_logs").insert({
+        actor_id: admin.id, action: "payment.reviewed", entity_type: "payment_submission",
+        entity_id: parsed.payment_id, metadata: parsed,
+      })
+      if (auditError) warning += " Audit entry could not be saved."
+    } catch { warning += " Audit entry could not be saved." }
     revalidatePath("/admin/payments")
     revalidatePath("/admin/enrollments")
-    return ok("Payment review saved.")
-  } catch (error) {
-    return fail(error instanceof Error ? error.message : "Payment review failed.")
+    return ok("Payment review saved." + warning)
+  } catch {
+    return fail("Payment review failed. Confirm you are signed in as an active administrator and retry.")
   }
 }
 

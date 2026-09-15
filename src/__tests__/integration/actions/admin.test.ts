@@ -229,6 +229,33 @@ describe("admin actions", () => {
   })
 
   describe("createStudentAction", () => {
+    it.each([
+      ["student", createStudentAction],
+    ] as const)("preserves the generated activation URL and normalized %s profile", async (role, action) => {
+      const { mock } = createSupabaseMock()
+      mock.from("profiles").maybeSingle.mockResolvedValue({ data: null, error: null })
+      mock.from("profiles").single.mockResolvedValue({ data: { id: "profile-new" }, error: null })
+      mock.auth.admin.createUser.mockResolvedValue({ data: { user: { id: "auth-new" } }, error: null })
+      const actionLink = `https://example.supabase.co/auth/v1/verify?token=test&type=recovery&redirect_to=${encodeURIComponent(`${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`)}`
+      mock.auth.admin.generateLink.mockResolvedValue({
+        data: { properties: { action_link: actionLink } }, error: null,
+      })
+      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as unknown as ReturnType<typeof createSupabaseAdminClient>)
+      const result = await action(undefined, createFormData({
+        full_name: "New User", email: "NEW@example.com", status: "active",
+      }))
+      expect(result.ok).toBe(true)
+      expect(mock.auth.admin.generateLink).toHaveBeenCalledWith({
+        type: "recovery", email: "new@example.com",
+        options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
+      })
+      expect(mock.from("profiles").upsert).toHaveBeenCalledWith(expect.objectContaining({
+        auth_user_id: "auth-new", email: "new@example.com", role, status: "active",
+      }), { onConflict: "email" })
+      expect(vi.mocked(sendTransactionalEmail).mock.calls[0][0].html).toContain(`href="${actionLink}"`)
+      expect(vi.mocked(sendTransactionalEmail).mock.calls[0][0].html.match(/redirect_to=/g)).toHaveLength(1)
+    })
+
     it("returns ok message and sends activation email when no profile or auth user exists", async () => {
       const { mock, tableChains } = createSupabaseMock()
       mock.from("profiles")
@@ -271,13 +298,14 @@ describe("admin actions", () => {
       expect(mock.auth.admin.generateLink).toHaveBeenCalledWith({
         type: "recovery",
         email: "newstudent@example.com",
+        options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
       })
       expect(mock.auth.admin.inviteUserByEmail).not.toHaveBeenCalled()
       expect(mock.from("profiles").upsert).toHaveBeenCalled()
       expect(sendTransactionalEmail).toHaveBeenCalled()
       expect((sendTransactionalEmail as any).mock.calls[0]?.[0]?.to).toBe("newstudent@example.com")
       expect((sendTransactionalEmail as any).mock.calls[0]?.[0]?.subject).toBe("Activate your Builtbyskills account")
-      expect((sendTransactionalEmail as any).mock.calls[0]?.[0]?.html).toContain("auth/v1/verify?token=test&type=recovery&redirect_to=")
+      expect((sendTransactionalEmail as any).mock.calls[0]?.[0]?.html).toContain('href="https://example.supabase.co/auth/v1/verify?token=test&type=recovery"')
     })
 
     it("returns 'Student already registered' when profile already exists", async () => {
@@ -768,39 +796,32 @@ describe("admin actions", () => {
   })
 
   describe("reviewPaymentAction", () => {
-    it("returns ok message on approved payment and sends email", async () => {
-      const { mock, tableChains } = createSupabaseMock()
-      mock.from("payment_submissions")
-      tableChains.get("payment_submissions")!.chain.single.mockResolvedValue({ data: { id: "payment-1", courses: { title: "Shopify" }, profiles: { full_name: "Ali", email: "ali@example.com" } }, error: null })
-      tableChains.get("payment_submissions")!.chain.setResolveWith(null, null)
-      mock.from("enrollment_requests")
-      tableChains.get("enrollment_requests")!.chain.maybeSingle.mockResolvedValue({ data: { id: "er-1", full_name: "Ali", email: "ali@example.com", course_id: "course-1" }, error: null })
-      tableChains.get("enrollment_requests")!.chain.setResolveWith(null, null)
-      mock.from("profiles")
-      tableChains.get("profiles")!.chain.single.mockResolvedValue({ data: { id: "profile-1" }, error: null })
-      tableChains.get("profiles")!.chain.setResolveWith(null, null)
-      mock.from("enrollments")
-      tableChains.get("enrollments")!.chain.setResolveWith(null, null)
-      mock.from("audit_logs")
-      tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
-
-      const formData = createFormData({
-        payment_id: "550e8400-e29b-41d4-a716-446655440000",
-        status: "approved",
-      })
-
-      const result = await reviewPaymentAction(undefined, formData)
-
-      expect(result).toEqual({ ok: true, message: "Payment review saved." })
-      expect(sendTransactionalEmail).toHaveBeenCalled()
-      expect((sendTransactionalEmail as any).mock.calls[0]?.[0]?.subject).toBe("Builtbyskills payment approved")
+    it("approves an existing student through the guarded database transaction", async () => {
+      const { mock } = createSupabaseMock()
+      const rpc = vi.fn().mockResolvedValueOnce({ data: {
+        ok: true, auth_user_id: "auth-student", email: "ali@example.com", full_name: "Ali",
+      }, error: null }).mockResolvedValueOnce({ data: {
+        ok: true, activation: false, email: "ali@example.com", full_name: "Ali",
+        course_title: "Shopify", receipt_id: "audit-1", receipt_metadata: { status: "approved" },
+      }, error: null })
+      vi.mocked(createSupabaseAdminClient).mockReturnValue({ ...mock, rpc } as unknown as ReturnType<typeof createSupabaseAdminClient>)
+      const result = await reviewPaymentAction(undefined, createFormData({
+        payment_id: "550e8400-e29b-41d4-a716-446655440000", status: "approved",
+      }))
+      expect(result).toEqual({ ok: true, message: "Payment approved and enrollment saved." })
+      expect(rpc).toHaveBeenLastCalledWith("approve_student_payment", expect.objectContaining({
+        p_finalize: true, p_auth_user_id: "auth-student", p_admin_id: "admin-1",
+      }))
+      expect(mock.auth.admin.createUser).not.toHaveBeenCalled()
+      expect(mock.from("profiles").upsert).not.toHaveBeenCalled()
+      expect(sendTransactionalEmail).toHaveBeenCalledWith(expect.objectContaining({ subject: "Builtbyskills payment approved" }))
     })
 
     it("returns ok message on rejected payment and sends email", async () => {
       const { mock, tableChains } = createSupabaseMock()
       mock.from("payment_submissions")
-      tableChains.get("payment_submissions")!.chain.single.mockResolvedValue({ data: { id: "payment-1", courses: { title: "Shopify" } }, error: null })
+      tableChains.get("payment_submissions")!.chain.single.mockResolvedValue({ data: { id: "payment-1", status: "pending" }, error: null })
+      tableChains.get("payment_submissions")!.chain.maybeSingle.mockResolvedValue({ data: { id: "payment-1" }, error: null })
       tableChains.get("payment_submissions")!.chain.setResolveWith(null, null)
       mock.from("enrollment_requests")
       tableChains.get("enrollment_requests")!.chain.maybeSingle.mockResolvedValue({ data: { id: "er-1", full_name: "Ali", email: "ali@example.com" }, error: null })

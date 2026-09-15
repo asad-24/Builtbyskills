@@ -168,6 +168,9 @@ describe("auth actions", () => {
         "REDIRECT:/forgot-password?sent=1"
       )
       expect(redirect).toHaveBeenCalledWith("/forgot-password?sent=1")
+      expect(mock.auth.resetPasswordForEmail).toHaveBeenCalledWith("user@example.com", {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
+      })
     })
 
     it("redirects to /forgot-password?error=... on reset failure", async () => {
@@ -182,10 +185,10 @@ describe("auth actions", () => {
       })
 
       await expect(forgotPasswordAction(formData)).rejects.toThrow(
-        "REDIRECT:/forgot-password?error=Email%20not%20found"
+        "REDIRECT:/forgot-password?error=Unable%20to%20send%20a%20reset%20link.%20Please%20try%20again."
       )
       expect(redirect).toHaveBeenCalledWith(
-        "/forgot-password?error=Email%20not%20found"
+        "/forgot-password?error=Unable%20to%20send%20a%20reset%20link.%20Please%20try%20again."
       )
     })
   })
