@@ -23,19 +23,29 @@ export async function establishRecoverySession(supabase: SupabaseClient, url: UR
   const refreshToken = fragment.get("refresh_token")
   const type = query.get("type") ?? fragment.get("type")
   if (type && type !== "recovery" && type !== "invite") throw new Error(recoveryError)
+
   if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (error) throw new Error(recoveryError)
-  } else if (tokenHash && (type === "recovery" || type === "invite")) {
-    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
-    if (error) throw new Error(recoveryError)
-  } else if (accessToken && refreshToken && (type === "recovery" || type === "invite")) {
-    const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
-    if (error) throw new Error(recoveryError)
-  } else if (requireLink || url.search || url.hash) {
-    // Never fall back to an unrelated existing session after a malformed link.
+    const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code)
+    if (error || !user) throw new Error(recoveryError)
+    return user.id
+  }
+
+  if (tokenHash && (type === "recovery" || type === "invite")) {
+    const { data: { user }, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
+    if (error || !user) throw new Error(recoveryError)
+    return user.id
+  }
+
+  if (accessToken && refreshToken && (type === "recovery" || type === "invite")) {
+    const { data: { user }, error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+    if (error || !user) throw new Error(recoveryError)
+    return user.id
+  }
+
+  if (requireLink || url.search || url.hash) {
     throw new Error(recoveryError)
   }
+
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error || !user) throw new Error(recoveryError)
   return user.id

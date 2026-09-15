@@ -14,7 +14,9 @@ function setup(role = "student", status = "active") {
   const auth = {
     getUser: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
     updateUser: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
-    exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
+    exchangeCodeForSession: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
+    verifyOtp: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
+    setSession: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
   }
   const single = vi.fn().mockResolvedValue({ data: { role, status }, error: null })
   const eq = vi.fn(() => ({ single }))
@@ -53,7 +55,48 @@ describe("password reset form (mocked Supabase)", () => {
     render(<ResetPasswordPage />)
     await fill()
     expect(auth.exchangeCodeForSession).toHaveBeenCalledWith("test")
+    expect(auth.getUser).toHaveBeenCalledTimes(1)
     expect(await screen.findByRole("link", { name: "Continue to dashboard" })).toHaveAttribute("href", "/student")
+  })
+
+  it("establishes a recovery session from token_hash on first load", async () => {
+    const { auth } = setup()
+    window.history.replaceState({}, "", "/reset-password?token_hash=recovery-token&type=recovery")
+    render(<ResetPasswordPage />)
+    await fill()
+    expect(auth.verifyOtp).toHaveBeenCalledWith({ token_hash: "recovery-token", type: "recovery" })
+    expect(auth.getUser).toHaveBeenCalledTimes(1)
+    expect(await screen.findByRole("link", { name: "Continue to dashboard" })).toHaveAttribute("href", "/student")
+  })
+
+  it("establishes an invite session from token_hash on first load", async () => {
+    const { auth } = setup()
+    window.history.replaceState({}, "", "/reset-password?token_hash=invite-token&type=invite")
+    render(<ResetPasswordPage />)
+    await fill()
+    expect(auth.verifyOtp).toHaveBeenCalledWith({ token_hash: "invite-token", type: "invite" })
+    expect(auth.getUser).toHaveBeenCalledTimes(1)
+    expect(await screen.findByRole("link", { name: "Continue to dashboard" })).toHaveAttribute("href", "/student")
+  })
+
+  it("establishes a session from access_token and refresh_token on first load", async () => {
+    const { auth } = setup()
+    window.history.replaceState({}, "", '/reset-password#access_token=access-token&refresh_token=refresh-token&type=recovery')
+    render(<ResetPasswordPage />)
+    await fill()
+    expect(auth.setSession).toHaveBeenCalledWith({ access_token: "access-token", refresh_token: "refresh-token" })
+    expect(auth.getUser).toHaveBeenCalledTimes(1)
+    expect(await screen.findByRole("link", { name: "Continue to dashboard" })).toHaveAttribute("href", "/student")
+  })
+
+  it("does not exchange credentials more than once", async () => {
+    const { auth } = setup()
+    window.history.replaceState({}, "", "/reset-password?token_hash=recovery-token&type=recovery")
+    render(<ResetPasswordPage />)
+    await fill()
+    expect(auth.verifyOtp).toHaveBeenCalledTimes(1)
+    expect(auth.exchangeCodeForSession).not.toHaveBeenCalled()
+    expect(auth.setSession).not.toHaveBeenCalled()
   })
 
   it.each([["short", "short", "at least 8"], ["NewPassword123", "", "confirm your password"],

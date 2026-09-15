@@ -12,9 +12,9 @@ vi.mock("@supabase/ssr", () => ({ createBrowserClient: vi.fn() }))
 function setup(path: string) {
   window.history.replaceState({}, "", path)
   const auth = {
-    exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
-    verifyOtp: vi.fn().mockResolvedValue({ error: null }),
-    setSession: vi.fn().mockResolvedValue({ error: null }),
+    exchangeCodeForSession: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
+    verifyOtp: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
+    setSession: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
     getUser: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
   }
   vi.mocked(createBrowserClient).mockReturnValue({ auth } as unknown as ReturnType<typeof createBrowserClient>)
@@ -29,7 +29,7 @@ describe("password callback (mocked Supabase)", () => {
     render(<StrictMode><AuthCallbackPage /></StrictMode>)
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/reset-password"))
     expect(auth.exchangeCodeForSession).toHaveBeenCalledExactlyOnceWith("test-code")
-    expect(auth.getUser).toHaveBeenCalledOnce()
+    expect(auth.getUser).not.toHaveBeenCalled()
     expect(window.location.search).toBe("")
     expect(createBrowserClient).toHaveBeenCalledWith(expect.any(String), expect.any(String),
       { isSingleton: false, auth: { detectSessionInUrl: false } })
@@ -80,7 +80,7 @@ describe("password callback (mocked Supabase)", () => {
 
   it("requires a verified user after exchange", async () => {
     const auth = setup("/auth/callback?code=test")
-    auth.getUser.mockResolvedValue({ data: { user: null }, error: null })
+    auth.exchangeCodeForSession.mockResolvedValue({ data: { user: null }, error: null })
     render(<AuthCallbackPage />)
     expect(await screen.findByRole("alert")).toHaveTextContent(recoveryError)
     expect(router.replace).not.toHaveBeenCalled()
