@@ -26,6 +26,10 @@ describe("password callback (mocked Supabase)", () => {
 
   it("exchanges a PKCE code once under Strict Mode and ignores external next", async () => {
     const auth = setup("/auth/callback?code=test-code&next=https://evil.example")
+    auth.exchangeCodeForSession.mockImplementation(async () => {
+      expect(window.location.search).toContain("code=test-code")
+      return { data: { user: { id: "auth-user" } }, error: null }
+    })
     render(<StrictMode><AuthCallbackPage /></StrictMode>)
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/reset-password"))
     expect(auth.exchangeCodeForSession).toHaveBeenCalledExactlyOnceWith("test-code")

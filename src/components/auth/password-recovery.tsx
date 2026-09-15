@@ -23,10 +23,17 @@ export function PasswordRecovery({ callback = false }: { callback?: boolean }) {
     if (!initialization.current) {
       initialization.current = (async () => {
         const url = new URL(window.location.href)
-        window.history.replaceState(window.history.state, "", window.location.pathname)
-        const supabase = createSupabaseBrowserClient(true)
-        const userId = await establishRecoverySession(supabase, url, callback)
-        return { supabase, userId }
+        try {
+          const supabase = createSupabaseBrowserClient(true)
+          const userId = await establishRecoverySession(supabase, url, callback)
+          return { supabase, userId }
+        } finally {
+          // The SDK may read window.location during PKCE exchange. Scrub only
+          // after processing settles, and never overwrite a newer navigation.
+          if (window.location.href === url.href) {
+            window.history.replaceState(window.history.state, "", url.pathname)
+          }
+        }
       })()
     }
     void initialization.current.then((result) => {
