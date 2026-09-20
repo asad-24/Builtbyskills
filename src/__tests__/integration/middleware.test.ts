@@ -176,8 +176,9 @@ describe("middleware", () => {
     const response = await middleware(createMockRequest(path) as any)
     expect(response.status).toBe(200)
     expect(NextResponse.redirect).not.toHaveBeenCalled()
+    expect(createServerClient).not.toHaveBeenCalled()
     expect(mock.from).not.toHaveBeenCalled()
-    expect(mock.auth.getUser).toHaveBeenCalled() // Existing session refresh remains.
+    expect(mock.auth.getUser).not.toHaveBeenCalled()
   })
 
   it.each(publicPaths)("keeps authenticated visitors on public route %s", async (path) => {
@@ -186,6 +187,7 @@ describe("middleware", () => {
     vi.mocked(createServerClient).mockReturnValue(mock)
     expect((await middleware(createMockRequest(path) as any)).status).toBe(200)
     expect(NextResponse.redirect).not.toHaveBeenCalled()
+    expect(createServerClient).not.toHaveBeenCalled()
     expect(mock.from).not.toHaveBeenCalled()
   })
 
