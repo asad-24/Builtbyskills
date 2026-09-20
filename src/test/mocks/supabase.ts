@@ -27,6 +27,7 @@ export type SupabaseMock = {
       generateLink: Mock
       listUsers: Mock
       inviteUserByEmail: Mock
+      deleteUser: Mock
     }
   }
 }
@@ -82,6 +83,7 @@ export function createSupabaseMock(): SupabaseMockFactory {
         generateLink: vi.fn().mockResolvedValue({ data: { properties: { action_link: "" } }, error: null }),
         listUsers: vi.fn().mockResolvedValue({ data: { users: [] as Array<{ id: string; email: string }> }, error: null }),
         inviteUserByEmail: vi.fn().mockResolvedValue({ data: null, error: null }),
+        deleteUser: vi.fn().mockResolvedValue({ data: null, error: null }),
       },
     },
   }

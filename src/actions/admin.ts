@@ -12,6 +12,7 @@ import {
   announcementSchema,
   assignCourseSchema,
   courseSchema,
+  deleteStudentSchema,
   instructorSchema,
   lessonSchema,
   liveClassSchema,
@@ -20,6 +21,8 @@ import {
   sectionSchema,
   splitLines,
   studentSchema,
+  updateStudentStatusSchema,
+  updateStudentSchema,
 } from "@/lib/validations/lms"
 
 type ActionState = {
@@ -324,6 +327,86 @@ export async function createStudentAction(_: ActionState | undefined, formData: 
     return ok("Student created and activation email queued.")
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Student creation failed.")
+  }
+}
+
+export async function updateStudentAction(_: ActionState | undefined, formData: FormData) {
+  try {
+    await requireAdmin()
+    const parsed = updateStudentSchema.parse(formObject(formData))
+    const supabase = createSupabaseAdminClient()
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({
+        full_name: parsed.full_name,
+        phone: parsed.phone ?? null,
+        whatsapp: parsed.whatsapp ?? null,
+        status: parsed.status,
+      })
+      .eq("id", parsed.id)
+      .eq("role", "student")
+      .select("id")
+      .maybeSingle()
+
+    if (error) return fail(error.message)
+    if (!data) return fail("Student not found.")
+
+    await audit("student.updated", "profile", parsed.id, {
+      full_name: parsed.full_name,
+      status: parsed.status,
+    })
+    revalidatePath("/admin/students")
+    return ok("Student updated.")
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "Student update failed.")
+  }
+}
+
+export async function updateStudentStatusAction(_: ActionState | undefined, formData: FormData) {
+  try {
+    await requireAdmin()
+    const parsed = updateStudentStatusSchema.parse(formObject(formData))
+    const supabase = createSupabaseAdminClient()
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ status: parsed.status })
+      .eq("id", parsed.id)
+      .eq("role", "student")
+      .select("id")
+      .maybeSingle()
+
+    if (error) return fail(error.message)
+    if (!data) return fail("Student not found.")
+
+    await audit("student.status.updated", "profile", parsed.id, { status: parsed.status })
+    revalidatePath("/admin/students")
+    return ok("Student status updated.")
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "Student status update failed.")
+  }
+}
+
+export async function deleteStudentAction(_: ActionState | undefined, formData: FormData) {
+  try {
+    await requireAdmin()
+    const parsed = deleteStudentSchema.parse(formObject(formData))
+    const supabase = createSupabaseAdminClient()
+    const { data, error } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("id", parsed.id)
+      .eq("role", "student")
+      .select("id")
+      .maybeSingle()
+
+    if (error) return fail(error.message)
+    if (!data) return fail("Student not found.")
+
+    await audit("student.deleted", "profile", parsed.id)
+    revalidatePath("/admin/students")
+    return ok("Student permanently deleted.")
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "Student deletion failed.")
   }
 }
 

@@ -65,6 +65,19 @@ export const studentSchema = z.object({
   status: z.enum(["active", "inactive", "suspended"]).default("active"),
 })
 
+export const updateStudentSchema = studentSchema.omit({ email: true }).extend({
+  id: z.string().uuid(),
+})
+
+export const updateStudentStatusSchema = z.object({
+  id: z.string().uuid(),
+  status: z.enum(["active", "inactive"]),
+})
+
+export const deleteStudentSchema = z.object({
+  id: z.string().uuid(),
+})
+
 export const instructorSchema = z.object({
   full_name: z.string().min(3),
   email: z.preprocess(

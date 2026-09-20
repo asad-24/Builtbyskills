@@ -40,6 +40,9 @@ import {
   createSectionAction,
   createLessonAction,
   createStudentAction,
+  updateStudentAction,
+  updateStudentStatusAction,
+  deleteStudentAction,
   createInstructorAction,
   assignCourseAction,
   createPaymentMethodAction,
@@ -746,6 +749,149 @@ describe("admin actions", () => {
         ok: true,
         message: "Student account was created, but the activation email was not sent or delivery could not be confirmed. The student can use Forgot Password to set their password.",
       })
+    })
+  })
+
+  describe("updateStudentAction", () => {
+    it("updates only student profile fields", async () => {
+      const { mock, tableChains } = createSupabaseMock()
+      mock.from("profiles")
+      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: { id: "550e8400-e29b-41d4-a716-446655440010" }, error: null })
+      mock.from("audit_logs")
+      tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
+      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+
+      const formData = createFormData({
+        id: "550e8400-e29b-41d4-a716-446655440010",
+        full_name: "Updated Student",
+        phone: "03001234567",
+        whatsapp: "03111234567",
+        status: "active",
+      })
+
+      const result = await updateStudentAction(undefined, formData)
+
+      expect(result).toEqual({ ok: true, message: "Student updated." })
+      expect(mock.from("profiles").update).toHaveBeenCalledWith({
+        full_name: "Updated Student",
+        phone: "03001234567",
+        whatsapp: "03111234567",
+        status: "active",
+      })
+      expect(mock.from("profiles").eq).toHaveBeenCalledWith("id", "550e8400-e29b-41d4-a716-446655440010")
+      expect(mock.from("profiles").eq).toHaveBeenCalledWith("role", "student")
+      expect(mock.from("audit_logs").insert).toHaveBeenCalledWith({
+        actor_id: "admin-1",
+        action: "student.updated",
+        entity_type: "profile",
+        entity_id: "550e8400-e29b-41d4-a716-446655440010",
+        metadata: { full_name: "Updated Student", status: "active" },
+      })
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/students")
+    })
+
+    it("returns failure when student is not found", async () => {
+      const { mock, tableChains } = createSupabaseMock()
+      mock.from("profiles")
+      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: null, error: null })
+      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+
+      const result = await updateStudentAction(undefined, createFormData({
+        id: "550e8400-e29b-41d4-a716-446655440010",
+        full_name: "Updated Student",
+        status: "active",
+      }))
+
+      expect(result).toEqual({ ok: false, message: "Student not found." })
+      expect(mock.from("audit_logs").insert).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("updateStudentStatusAction", () => {
+    it("updates only the student status", async () => {
+      const { mock, tableChains } = createSupabaseMock()
+      mock.from("profiles")
+      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: { id: "550e8400-e29b-41d4-a716-446655440010" }, error: null })
+      mock.from("audit_logs")
+      tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
+      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+
+      const result = await updateStudentStatusAction(undefined, createFormData({
+        id: "550e8400-e29b-41d4-a716-446655440010",
+        status: "inactive",
+      }))
+
+      expect(result).toEqual({ ok: true, message: "Student status updated." })
+      expect(mock.from("profiles").update).toHaveBeenCalledWith({ status: "inactive" })
+      expect(mock.from("profiles").eq).toHaveBeenCalledWith("id", "550e8400-e29b-41d4-a716-446655440010")
+      expect(mock.from("profiles").eq).toHaveBeenCalledWith("role", "student")
+      expect(mock.from("audit_logs").insert).toHaveBeenCalledWith({
+        actor_id: "admin-1",
+        action: "student.status.updated",
+        entity_type: "profile",
+        entity_id: "550e8400-e29b-41d4-a716-446655440010",
+        metadata: { status: "inactive" },
+      })
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/students")
+    })
+
+    it("returns failure when student is not found", async () => {
+      const { mock, tableChains } = createSupabaseMock()
+      mock.from("profiles")
+      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: null, error: null })
+      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+
+      const result = await updateStudentStatusAction(undefined, createFormData({
+        id: "550e8400-e29b-41d4-a716-446655440010",
+        status: "active",
+      }))
+
+      expect(result).toEqual({ ok: false, message: "Student not found." })
+      expect(mock.from("audit_logs").insert).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("deleteStudentAction", () => {
+    it("permanently deletes the student profile without deleting the auth user", async () => {
+      const { mock, tableChains } = createSupabaseMock()
+      mock.from("profiles")
+      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: { id: "550e8400-e29b-41d4-a716-446655440010" }, error: null })
+      mock.from("audit_logs")
+      tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
+      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+
+      const result = await deleteStudentAction(undefined, createFormData({
+        id: "550e8400-e29b-41d4-a716-446655440010",
+      }))
+
+      expect(result).toEqual({ ok: true, message: "Student permanently deleted." })
+      expect(mock.from("profiles").delete).toHaveBeenCalled()
+      expect(mock.from("profiles").eq).toHaveBeenCalledWith("id", "550e8400-e29b-41d4-a716-446655440010")
+      expect(mock.from("profiles").eq).toHaveBeenCalledWith("role", "student")
+      expect(mock.auth.admin.deleteUser).not.toHaveBeenCalled()
+      expect(mock.from("audit_logs").insert).toHaveBeenCalledWith({
+        actor_id: "admin-1",
+        action: "student.deleted",
+        entity_type: "profile",
+        entity_id: "550e8400-e29b-41d4-a716-446655440010",
+        metadata: {},
+      })
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/students")
+    })
+
+    it("returns failure when student is not found", async () => {
+      const { mock, tableChains } = createSupabaseMock()
+      mock.from("profiles")
+      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: null, error: null })
+      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+
+      const result = await deleteStudentAction(undefined, createFormData({
+        id: "550e8400-e29b-41d4-a716-446655440010",
+      }))
+
+      expect(result).toEqual({ ok: false, message: "Student not found." })
+      expect(mock.auth.admin.deleteUser).not.toHaveBeenCalled()
+      expect(mock.from("audit_logs").insert).not.toHaveBeenCalled()
     })
   })
 
