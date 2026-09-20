@@ -96,6 +96,22 @@ export type CourseBuilderData = {
   sections: SectionWithLessons[]
 }
 
+function getSetupErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === "string" && message.trim()) {
+      if (message.toLowerCase().includes("invalid api key")) {
+        return "Supabase service role key is invalid. Update SUPABASE_SERVICE_ROLE_KEY in Vercel and redeploy."
+      }
+      return message
+    }
+  }
+
+  return "Unable to load enrollment data. Check the Supabase URL and service role key in Vercel."
+}
+
 function appError(error: unknown): AppResult<never> {
   if (error instanceof MissingEnvironmentError) {
     return {
@@ -113,7 +129,7 @@ function appError(error: unknown): AppResult<never> {
   return {
     ok: false,
     reason: "error",
-    message: error instanceof Error ? error.message : "Unable to load admin data.",
+    message: getSetupErrorMessage(error),
   }
 }
 
@@ -347,6 +363,14 @@ export async function getEnrollmentPageData() {
 
     if (courses.error) throw courses.error
     if (paymentMethods.error) throw paymentMethods.error
+
+    if ((courses.data ?? []).length === 0) {
+      return { ok: false as const, reason: "error" as const, message: "Add at least one published course before opening enrollment." }
+    }
+
+    if ((paymentMethods.data ?? []).length === 0) {
+      return { ok: false as const, reason: "error" as const, message: "Add at least one active payment method before opening enrollment." }
+    }
 
     return {
       ok: true as const,
