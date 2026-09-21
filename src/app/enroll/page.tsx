@@ -7,6 +7,8 @@ import { PublicPageShell } from "@/components/public/site-shell"
 import { getEnrollmentPageData } from "@/features/admin/data"
 import { formatMoney } from "@/lib/format"
 
+export const dynamic = "force-dynamic"
+
 export const metadata = {
   title: "Enroll | Builtbyskills",
 }
