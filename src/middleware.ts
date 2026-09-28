@@ -24,7 +24,17 @@ function isPublicRoute(pathname: string) {
 }
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
   const response = NextResponse.next()
+
+  if (pathname.startsWith("/api/")) {
+    return response
+  }
+
+  if (isPublicRoute(pathname)) {
+    return response
+  }
+
   const env = getPublicEnv()
 
   const supabase = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
@@ -41,15 +51,6 @@ export async function middleware(request: NextRequest) {
   })
 
   const { data: { user } } = await supabase.auth.getUser()
-  const pathname = request.nextUrl.pathname
-
-  if (pathname.startsWith("/api/")) {
-    return response
-  }
-
-  if (isPublicRoute(pathname)) {
-    return response
-  }
 
   if (!user) {
     return NextResponse.redirect(new URL("/login", request.url))
