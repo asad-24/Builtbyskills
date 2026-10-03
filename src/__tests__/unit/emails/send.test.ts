@@ -11,7 +11,7 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock)
   fetchMock.mockReset()
 })
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers() })
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers(); vi.restoreAllMocks() })
 describe("Brevo transactional sender", () => {
   it.each(["BREVO_API_KEY", "EMAIL_FROM"])("skips when %s is missing", async (key) => {
     vi.stubEnv(key, "")
@@ -60,5 +60,49 @@ describe("Brevo transactional sender", () => {
     expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true)
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(vi.getTimerCount()).toBe(0)
+  })
+})
+
+
+describe("development diagnostics", () => {
+  it.each(["unauthorized", "private-api-key secret-link"])("logs only allowlisted code %s", async (code) => {
+    vi.stubEnv("NODE_ENV", "development")
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ code, message: JSON.stringify(input) + "private-api-key sender@example.com" }), { status: 401 }))
+    expect(await sendTransactionalEmail(input)).toMatchObject({ ok: false, skipped: false })
+    expect(warn).toHaveBeenCalledExactlyOnceWith("[brevo-email]", {
+      category: "http_error", status: 401,
+      ...(code === "unauthorized" ? { code } : {}),
+      description: "Email provider rejected the request.",
+    })
+  })
+  it.each(["missing_config", "network_error", "invalid_response", "timeout"])("reports sanitized %s", async (category) => {
+    vi.stubEnv("NODE_ENV", "development")
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    if (category === "missing_config") vi.stubEnv("BREVO_API_KEY", "")
+    if (category === "network_error") fetchMock.mockRejectedValue(new Error(JSON.stringify(input)))
+    if (category === "invalid_response") fetchMock.mockResolvedValue(new Response("private-api-key secret-link", { status: 201 }))
+    if (category === "timeout") {
+      vi.useFakeTimers()
+      fetchMock.mockImplementation((_url, options) => new Promise((_resolve, reject) => options.signal.addEventListener("abort", () => reject(new Error("private-api-key")))))
+    }
+    const pending = sendTransactionalEmail(input)
+    if (category === "timeout") await vi.advanceTimersByTimeAsync(10_000)
+    expect((await pending).ok).toBe(false)
+    expect(warn).toHaveBeenCalledExactlyOnceWith("[brevo-email]", { category, description: expect.any(String) })
+    expect(JSON.stringify(warn.mock.calls)).not.toMatch(/private-api-key|secret-link|student@example|sender@example|Activation/)
+  })
+  it("does not log or consume error bodies in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const json = vi.fn()
+    fetchMock.mockResolvedValue({ ok: false, status: 401, json })
+    expect((await sendTransactionalEmail(input)).ok).toBe(false)
+    expect(json).not.toHaveBeenCalled()
+    fetchMock.mockRejectedValue(new Error("private-api-key"))
+    await sendTransactionalEmail(input)
+    vi.stubEnv("BREVO_API_KEY", "")
+    await sendTransactionalEmail(input)
+    expect(warn).not.toHaveBeenCalled()
   })
 })
