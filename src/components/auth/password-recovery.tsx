@@ -84,7 +84,7 @@ export function PasswordRecovery({ callback = false }: { callback?: boolean }) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-12">
+    <main className="bbs-theme flex min-h-screen items-center justify-center bg-background text-foreground px-4 py-12">
       <section className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6">
         <h1 className="text-2xl font-semibold">Set your password</h1>
         {destination ? <div className="mt-6 grid gap-4">

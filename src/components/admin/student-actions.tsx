@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState, type ReactNode } from "react"
+import { useId, useRef, useState, type ReactNode } from "react"
 import { MoreHorizontal, Plus, X } from "lucide-react"
 
 import {
@@ -10,6 +10,7 @@ import {
   updateStudentAction,
   updateStudentStatusAction,
 } from "@/actions/admin"
+import { ConfirmAction } from "@/components/admin/confirm-action"
 import { ActionForm } from "@/components/admin/action-form"
 import { SelectField, StatusBadge, TextField } from "@/components/admin/admin-ui"
 import { Button } from "@/components/ui/button"
@@ -118,6 +119,7 @@ export function StudentStatusButton({ student }: { student: Student }) {
 }
 
 export function StudentRowActions({ student }: { student: Student }) {
+  const menuTrigger = useRef<HTMLButtonElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -125,6 +127,7 @@ export function StudentRowActions({ student }: { student: Student }) {
   return (
     <div className="inline-flex flex-col items-end">
       <Button
+        ref={menuTrigger}
         type="button"
         variant="ghost"
         size="icon-sm"
@@ -179,20 +182,10 @@ export function StudentRowActions({ student }: { student: Student }) {
           </ActionForm>
         </StudentModal>
       ) : null}
-      {deleteOpen ? (
-        <StudentModal title="Delete student" onClose={() => setDeleteOpen(false)}>
-          <ActionForm action={deleteStudentAction} submitLabel="Delete student">
-            <input type="hidden" name="id" value={student.id} />
-            <p className="text-sm leading-6 text-slate-600">
-              This will permanently remove the student from the table. Their course access and progress will be removed, while payment history remains detached.
-            </p>
-            <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
-              <p className="font-medium text-slate-950">{student.full_name}</p>
-              <p>{student.email}</p>
-            </div>
-          </ActionForm>
-        </StudentModal>
-      ) : null}
+      <ConfirmAction open={deleteOpen} onOpenChange={setDeleteOpen} onCloseFocus={() => menuTrigger.current?.focus()} action={deleteStudentAction}
+        title="Delete student" description={`Permanently remove ${student.full_name} (${student.email}) from the table? Their course access and progress will be removed, while payment history remains detached.`}>
+        <input type="hidden" name="id" value={student.id} />
+      </ConfirmAction>
     </div>
   )
 }

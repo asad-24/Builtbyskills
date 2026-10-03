@@ -21,6 +21,16 @@ describe("emailTemplates", () => {
     expect(html).toContain("Invalid screenshot")
   })
 
+  it("includes the exact recovery action in the approval email without a separate invitation", () => {
+    const url = "https://auth.example/verify?token=secure&type=recovery&redirect_to=callback"
+    const html = emailTemplates.paymentApproved({ name: "Haya", courseTitle: "Course", actionUrl: url })
+    const doc = new DOMParser().parseFromString(html, "text/html")
+    expect(doc.querySelector("a")?.getAttribute("href")).toBe(url)
+    expect(doc.querySelector("a")?.textContent).toBe("Set your password")
+    expect(html).toContain("enrollment is now confirmed")
+    expect(html).not.toContain("invitation email")
+  })
+
   it("renders accountActivation with actionUrl", () => {
     const html = emailTemplates.accountActivation({ name: "Dave", actionUrl: "http://localhost:3000/auth/callback" })
     expect(html).toContain("Dave")

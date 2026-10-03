@@ -16,7 +16,8 @@ const paymentId = "550e8400-e29b-41d4-a716-446655440000"
 const prepared = { ok: true, auth_user_id: null, email: "student@example.com", full_name: "New Student" }
 const committed = {
   ok: true, activation: true, email: prepared.email, full_name: prepared.full_name,
-  receipt_id: "receipt-1", receipt_metadata: { status: "approved", student_id: "profile-1", auth_user_id: "auth-1" },
+  receipt_id: "receipt-1", course_title: "Test Course",
+  receipt_metadata: { activation: true, status: "approved", student_id: "profile-1", auth_user_id: "auth-1" },
 }
 function form(status = "approved") {
   const data = new FormData()
@@ -48,7 +49,7 @@ describe("payment approval orchestration (mocked Auth, RPC and email)", () => {
     expect(result.ok).toBe(true)
     expect(mock.auth.admin.createUser).toHaveBeenCalledExactlyOnceWith({
       email: prepared.email, email_confirm: true,
-      user_metadata: { full_name: prepared.full_name, role: "student" }, app_metadata: { payment_provisioned: true },
+      user_metadata: { full_name: prepared.full_name, role: "student" }, app_metadata: { payment_provisioned: true, payment_password_setup_required: true },
     })
     expect(rpc).toHaveBeenLastCalledWith("approve_student_payment", {
       p_payment_id: paymentId, p_admin_id: "admin-profile", p_finalize: true, p_auth_user_id: "auth-1",
@@ -57,6 +58,12 @@ describe("payment approval orchestration (mocked Auth, RPC and email)", () => {
       type: "recovery", email: prepared.email, options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
     })
     expect(sendTransactionalEmail).toHaveBeenCalledOnce()
+    const email = vi.mocked(sendTransactionalEmail).mock.calls[0][0]
+    expect(email.subject).toBe("Builtbyskills payment approved")
+    expect(email.html).toContain("Test Course")
+    expect(email.html).toContain("Set your password")
+    expect(email.html).not.toContain("invitation email")
+    expect(mock.from("audit_logs").update).toHaveBeenCalledWith({ metadata: { ...committed.receipt_metadata, email_status: "sent" } })
     expect(vi.mocked(sendTransactionalEmail).mock.calls[0][0].html).toContain('href="https://auth.example/verify?token=test&amp;redirect_to=callback"')
     expect(rpc.mock.invocationCallOrder[1]).toBeLessThan(mock.auth.admin.generateLink.mock.invocationCallOrder[0])
     expect(mock.from("profiles").upsert).not.toHaveBeenCalled()
@@ -180,6 +187,84 @@ describe("payment approval orchestration (mocked Auth, RPC and email)", () => {
     const result = await reviewPaymentAction(undefined, form())
     expect(result.ok).toBe(true)
     expect(result.message).toContain("Email receipt could not be recorded")
+  })
+
+  it.each([false, true])("verifies the complete stateful approval and replay (existing account=%s)", async (existing) => {
+    const { mock, rpc } = setup()
+    // Model Auth's generated non-empty hash, rather than treating omission of
+    // createUser.password as an empty database password. No hosted calls occur.
+    const passwordHash = existing ? "existing-password-hash" : "auth-generated-random-hash"
+    type AuthFixture = {
+      id: string; email: string; encrypted_password: string
+      app_metadata: Record<string, unknown>; last_sign_in_at: string | null
+    }
+    let user: AuthFixture | null = existing ? {
+      id: "auth-1", email: prepared.email, encrypted_password: passwordHash,
+      app_metadata: {}, last_sign_in_at: null,
+    } : null
+    let approved = false
+    const activations: boolean[] = []
+    const updateUserById = vi.fn(() => { throw new Error("Approval must never update Auth passwords") })
+    Object.assign(mock.auth.admin, { updateUserById })
+    mock.auth.admin.createUser.mockImplementation(async (attributes) => {
+      expect(user).toBeNull() // This email does not already exist in Auth.
+      expect(attributes).not.toHaveProperty("password")
+      user = {
+        id: "auth-1", email: attributes.email, encrypted_password: passwordHash,
+        app_metadata: structuredClone(attributes.app_metadata), last_sign_in_at: null,
+      }
+      return { data: { user }, error: null }
+    })
+    rpc.mockImplementation(async (name, args) => {
+      expect(name).toBe("approve_student_payment")
+      if (approved) return response({ ok: true, already_approved: true, email_status: "sent" })
+      if (!args.p_finalize) return response({ ...prepared, auth_user_id: user?.id ?? null })
+      expect(user).not.toBeNull()
+      expect(args.p_auth_user_id).toBe(user!.id)
+      // Migration 202610020002's password gate for a never-used provisioned
+      // identity: a generated hash is eligible only with the trusted marker.
+      if (!existing) expect(user!.app_metadata.payment_password_setup_required).toBe(true)
+      const activation = user!.encrypted_password === "" ||
+        (user!.app_metadata.payment_password_setup_required === true && user!.last_sign_in_at === null)
+      activations.push(activation)
+      approved = true
+      return response({ ...committed, activation, receipt_metadata: { ...committed.receipt_metadata, activation } })
+    })
+
+    expect(user?.email ?? null).toBe(existing ? prepared.email : null)
+    expect((await reviewPaymentAction(undefined, form())).ok).toBe(true)
+    expect(activations).toEqual([!existing])
+    expect(mock.auth.admin.createUser).toHaveBeenCalledTimes(existing ? 0 : 1)
+    if (!existing) {
+      expect(mock.auth.admin.createUser.mock.invocationCallOrder[0]).toBeLessThan(rpc.mock.invocationCallOrder[1])
+    }
+    const email = vi.mocked(sendTransactionalEmail).mock.calls[0][0]
+    if (existing) {
+      expect(email.html).not.toContain("Set your password")
+      expect(email.html).toContain("Sign in with your existing account")
+    } else {
+      expect(email.html).toContain("Set your password")
+      expect(email.html).toContain('href="https://auth.example/verify?token=test&amp;redirect_to=callback"')
+      expect(mock.auth.admin.generateLink).toHaveBeenCalledWith(expect.objectContaining({ type: "recovery" }))
+    }
+    expect((await reviewPaymentAction(undefined, form())).ok).toBe(true)
+    expect(activations).toEqual([!existing])
+    expect(sendTransactionalEmail).toHaveBeenCalledOnce()
+    expect(mock.auth.admin.generateLink).toHaveBeenCalledTimes(existing ? 0 : 1)
+    expect(mock.auth.admin.createUser).toHaveBeenCalledTimes(existing ? 0 : 1)
+    expect(updateUserById).not.toHaveBeenCalled()
+    expect(user!.encrypted_password).toBe(passwordHash)
+  })
+
+  it("does not send a misleading confirmation if the activation link is missing", async () => {
+    const { mock, rpc } = setup()
+    rpc.mockResolvedValueOnce(response(prepared)).mockResolvedValueOnce(response(committed))
+    mock.auth.admin.generateLink.mockResolvedValue({ data: { properties: { action_link: "" } }, error: null })
+    const result = await reviewPaymentAction(undefined, form())
+    expect(result.ok).toBe(true)
+    expect(result.message).toContain("Forgot password")
+    expect(sendTransactionalEmail).not.toHaveBeenCalled()
+    expect(mock.from("audit_logs").update).toHaveBeenCalledWith({ metadata: { ...committed.receipt_metadata, email_status: "failed" } })
   })
 
   it("reports an uncertain RPC response without falsely claiming rollback", async () => {

@@ -23,11 +23,11 @@ export function CourseCard({ course }: { course: Course }) {
         ) : null}
       </div>
       <div className="p-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-lime-700">{course.category}</p>
+        {course.category ? <p className="text-xs font-semibold uppercase tracking-wide text-lime-700">{course.category}</p> : null}
         <h2 className="mt-2 text-xl font-semibold text-slate-950">{course.title}</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">{course.short_description}</p>
         <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-600">
-          <span className="rounded-full bg-slate-100 px-2 py-1">{course.level}</span>
+          {course.level ? <span className="rounded-full bg-slate-100 px-2 py-1">{course.level}</span> : null}
           <span className="rounded-full bg-slate-100 px-2 py-1">{course.duration_text ?? "Flexible"}</span>
           <span className="rounded-full bg-lime-100 px-2 py-1 text-lime-800">{formatMoney(course.price, course.currency)}</span>
         </div>

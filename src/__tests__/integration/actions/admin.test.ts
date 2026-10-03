@@ -46,6 +46,8 @@ import {
   createInstructorAction,
   assignCourseAction,
   createPaymentMethodAction,
+  updatePaymentMethodAction,
+  updatePaymentMethodStatusAction,
   reviewPaymentAction,
   createLiveClassAction,
   createAnnouncementAction,
@@ -94,7 +96,7 @@ describe("admin actions", () => {
 
       const result = await createCourseAction(undefined, formData)
 
-      expect(result).toEqual({ ok: true, message: "Course created." })
+      expect(result).toEqual({ ok: true, message: "Course created.", nextHref: "/admin/course-builder/course-1" })
       expect(mock.from("courses").insert).toHaveBeenCalled()
       expect(mock.from("audit_logs").insert).toHaveBeenCalledWith({
         actor_id: "admin-1",
@@ -125,7 +127,7 @@ describe("admin actions", () => {
 
       const result = await createCourseAction(undefined, formData)
 
-      expect(result).toEqual({ ok: false, message: "You do not have permission to perform this action." })
+      expect(result).toEqual({ ok: false, message: "You do not have permission to manage course content." })
     })
   })
 
@@ -139,7 +141,7 @@ describe("admin actions", () => {
       vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
-        id: "course-1",
+        id: "550e8400-e29b-41d4-a716-446655440001",
         title: "Updated Course",
         slug: "updated-course",
         short_description: "Updated description.",
@@ -158,7 +160,7 @@ describe("admin actions", () => {
       expect(result).toEqual({ ok: true, message: "Course updated." })
       expect(mock.from("courses").update).toHaveBeenCalled()
       expect(revalidatePath).toHaveBeenCalledWith("/admin/courses")
-      expect(revalidatePath).toHaveBeenCalledWith("/admin/course-builder/course-1")
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/course-builder/550e8400-e29b-41d4-a716-446655440001")
     })
   })
 
@@ -920,7 +922,7 @@ describe("admin actions", () => {
   })
 
   describe("createPaymentMethodAction", () => {
-    it("returns ok message when payment method is created", async () => {
+    it.each([undefined, "", "pk36 scbl 0000 0011 2345 6702"])("creates payment method with optional IBAN %s", async (iban) => {
       const { mock, tableChains } = createSupabaseMock()
       mock.from("payment_methods")
       tableChains.get("payment_methods")!.chain.single.mockResolvedValue({ data: { id: "pm-1" }, error: null })
@@ -936,10 +938,15 @@ describe("admin actions", () => {
         account_number: "1234567890",
         is_active: "true",
       })
+      if (iban !== undefined) formData.set("iban_number", iban)
 
       const result = await createPaymentMethodAction(undefined, formData)
 
       expect(result).toEqual({ ok: true, message: "Payment method created." })
+      expect(tableChains.get("payment_methods")!.chain.insert).toHaveBeenCalledWith(expect.objectContaining({
+        account_number: "1234567890",
+        iban_number: iban ? "PK36SCBL0000001123456702" : null,
+      }))
       expect(revalidatePath).toHaveBeenCalledWith("/admin/payment-settings")
     })
   })
@@ -1060,5 +1067,94 @@ describe("admin actions", () => {
       expect(mock.from("contact_submissions").update).toHaveBeenCalled()
       expect(revalidatePath).toHaveBeenCalledWith("/admin/contact-submissions")
     })
+  })
+})
+
+
+describe("payment method management", () => {
+  const id = "550e8400-e29b-41d4-a716-446655440001"
+  const fields = { id, updated_at: "2026-10-01T12:00:00Z", method_type: "bank_transfer", display_name: "Bank Transfer", account_title: "Academy", account_number: "123456", iban_number: "", bank_name: "", instructions: "" }
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(requireAdmin).mockResolvedValue(adminProfile as never)
+  })
+
+  function setup() {
+    const { mock } = createSupabaseMock()
+    vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as never)
+    return { mock, methods: mock.from("payment_methods") }
+  }
+
+  it.each([createPaymentMethodAction, updatePaymentMethodAction])("returns friendly IBAN feedback without serialized errors", async action => {
+    const result = await action(undefined, createFormData({ ...fields, iban_number: "IBAN PK42 SCBL 0000 0011 2345 6702" }))
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain("Do not include the word IBAN")
+    expect(result.message).not.toMatch(/\{|\[|invalid_format|Zod|path|code/)
+    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+  })
+
+  it("edits the existing row, clears optional details, and preserves availability and history", async () => {
+    const { mock, methods } = setup()
+    methods.maybeSingle.mockResolvedValueOnce({ data: null, error: null }).mockResolvedValueOnce({ data: { id }, error: null })
+    const result = await updatePaymentMethodAction(undefined, createFormData(fields))
+    expect(result.ok).toBe(true)
+    expect(methods.update).toHaveBeenCalledWith({ method_type: "bank_transfer", display_name: "Bank Transfer", account_title: "Academy", account_number: "123456", iban_number: null, bank_name: null, instructions: null })
+    expect(methods.eq).toHaveBeenCalledWith("updated_at", fields.updated_at)
+    expect(methods.insert).not.toHaveBeenCalled()
+    expect(methods.delete).not.toHaveBeenCalled()
+    expect(mock.from).not.toHaveBeenCalledWith("payment_submissions")
+    expect(revalidatePath).toHaveBeenCalledWith("/enroll")
+  })
+
+  it.each(["true", "false"])("changes availability to %s without deleting historical references", async is_active => {
+    const { mock, methods } = setup()
+    methods.maybeSingle.mockResolvedValue({ data: { id }, error: null })
+    const result = await updatePaymentMethodStatusAction(undefined, createFormData({ id, updated_at: fields.updated_at, is_active }))
+    expect(result.ok).toBe(true)
+    expect(methods.update).toHaveBeenCalledWith({ is_active: is_active === "true" })
+    expect(methods.eq).toHaveBeenCalledWith("id", id)
+    expect(methods.eq).toHaveBeenCalledWith("updated_at", fields.updated_at)
+    expect(methods.delete).not.toHaveBeenCalled()
+    expect(mock.from).not.toHaveBeenCalledWith("payment_submissions")
+  })
+
+  it.each([updatePaymentMethodAction, updatePaymentMethodStatusAction])("rejects stale updates", async action => {
+    const { methods } = setup()
+    const result = await action(undefined, createFormData({ ...fields, is_active: "false" }))
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain("Refresh")
+    expect(methods.delete).not.toHaveBeenCalled()
+  })
+
+  it.each([createPaymentMethodAction, updatePaymentMethodAction, updatePaymentMethodStatusAction])("requires admin authorization", async action => {
+    vi.mocked(requireAdmin).mockRejectedValue(new AppForbiddenError())
+    const result = await action(undefined, createFormData({ ...fields, is_active: "true" }))
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain("permission")
+    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+  })
+
+  it.each([createPaymentMethodAction, updatePaymentMethodAction])("rejects an existing account instead of creating duplicates", async action => {
+    const { methods } = setup()
+    methods.maybeSingle.mockResolvedValue({ data: { id: "another-method" }, error: null })
+    expect((await action(undefined, createFormData(fields))).ok).toBe(false)
+    expect(methods.insert).not.toHaveBeenCalled()
+    expect(methods.update).not.toHaveBeenCalled()
+  })
+
+  it.each([updatePaymentMethodAction, updatePaymentMethodStatusAction])("hides infrastructure error details", async action => {
+    const { methods } = setup()
+    methods.maybeSingle.mockResolvedValueOnce({ data: null, error: null }).mockResolvedValueOnce({ data: null, error: { message: 'internal secret {"code":"db"}' } })
+    if (action === updatePaymentMethodStatusAction) methods.maybeSingle.mockResolvedValue({ data: null, error: { message: 'internal secret {"code":"db"}' } })
+    const result = await action(undefined, createFormData({ ...fields, is_active: "true" }))
+    expect(result.ok).toBe(false)
+    expect(result.message).not.toMatch(/secret|code|db/)
+  })
+
+  it("creates an inactive method when the checkbox is unchecked", async () => {
+    const { methods } = setup()
+    methods.single.mockResolvedValue({ data: { id }, error: null })
+    expect((await createPaymentMethodAction(undefined, createFormData(fields))).ok).toBe(true)
+    expect(methods.insert).toHaveBeenCalledWith(expect.objectContaining({ is_active: false }))
   })
 })

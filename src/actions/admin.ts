@@ -1,6 +1,8 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { z } from "zod"
+import { AppAuthError, AppForbiddenError } from "@/lib/errors"
 
 import { emailTemplates } from "@/emails/templates"
 import { requireAdmin } from "@/lib/auth/session"
@@ -14,20 +16,25 @@ import {
   courseSchema,
   deleteStudentSchema,
   instructorSchema,
-  lessonSchema,
   liveClassSchema,
   paymentMethodSchema,
+  paymentMethodIdentitySchema,
+  paymentMethodStatusSchema,
   paymentReviewSchema,
-  sectionSchema,
   splitLines,
   studentSchema,
   updateStudentStatusSchema,
   updateStudentSchema,
 } from "@/lib/validations/lms"
 
+import { lessonEditorSchema, sectionEditorSchema, lessonEditIdentitySchema, safeExternalUrlSchema } from "@/lib/validations/course-builder"
+import { parseYouTubeUrl, isYouTubeVideoId } from "@/lib/lessons/youtube"
+import { appendPosition } from "@/lib/lessons/ordering"
+
 type ActionState = {
   ok: boolean
   message: string
+  nextHref?: string
 }
 
 const ok = (message: string): ActionState => ({ ok: true, message })
@@ -35,6 +42,27 @@ const fail = (message: string): ActionState => ({ ok: false, message })
 
 function formObject(formData: FormData) {
   return Object.fromEntries(formData.entries())
+}
+
+function courseValidationMessage(issues: ReadonlyArray<{ path: PropertyKey[] }>) {
+  const messages: Record<string, string> = {
+    title: "Course name is required.",
+    slug: "Course address must use lowercase letters, numbers, and single hyphens between words.",
+    short_description: "Brief summary is required.",
+    description: "About this course is required.",
+    thumbnail_url: "Thumbnail must be an uploaded image, a valid image link, or a site image path.",
+    category: "Enter a category, or leave it blank.",
+    level: "Enter who this course is for, or leave it blank.",
+    duration_text: "Duration must be text, or left blank.",
+    price: "Price must be a number greater than or equal to zero.",
+    currency: "Currency must be a 3-letter code, such as PKR.",
+    status: "Status must be draft, published, unpublished, or archived.",
+    instructor_id: "Instructor must be selected from the list, or left as No instructor.",
+    featured: "Choose whether this is a featured course.",
+    outcomes: "Enter what students will learn as text.",
+    requirements: "Enter requirements as text, one per line.",
+  }
+  return [...new Set(issues.map(issue => messages[String(issue.path[0])] ?? "Check the course details and try again."))].join(" ")
 }
 
 async function audit(action: string, entityType: string, entityId: string | null, metadata: Record<string, unknown> = {}) {
@@ -104,7 +132,12 @@ async function findAuthUserByEmail(
 export async function createCourseAction(_: ActionState | undefined, formData: FormData) {
   try {
     await requireAdmin()
-    const parsed = courseSchema.parse(formObject(formData))
+    const raw = formObject(formData)
+    // Truncation can land on a separator, so strip edge hyphens afterwards.
+    const base = String(raw.title ?? "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-/, "").slice(0, 80).replace(/-$/, "") || "course"
+    const result = courseSchema.safeParse({ ...raw, status: raw.status ?? "draft", slug: raw.slug || `${base}-${crypto.randomUUID().slice(0, 8)}`, featured: formData.get("featured") === "true" })
+    if (!result.success) return fail(courseValidationMessage(result.error.issues))
+    const parsed = result.data
     const supabase = createSupabaseAdminClient()
     const { data, error } = await supabase
       .from("courses")
@@ -119,40 +152,50 @@ export async function createCourseAction(_: ActionState | undefined, formData: F
       .select("id")
       .single()
 
-    if (error) return fail(error.message)
+    if (error) return builderFailure(error)
     await audit("course.created", "course", data.id, { title: parsed.title })
     revalidatePath("/admin/courses")
-    return ok("Course created.")
+    return { ...ok("Course created."), nextHref: `/admin/course-builder/${data.id}` }
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Course creation failed.")
+    return builderFailure(error)
   }
 }
 
 export async function updateCourseAction(_: ActionState | undefined, formData: FormData) {
   try {
     await requireAdmin()
-    const id = String(formData.get("id"))
-    const parsed = courseSchema.parse(formObject(formData))
+    const identity = z.string().uuid().safeParse(formData.get("id"))
+    if (!identity.success) return fail("This course could not be identified. Refresh the page and try again.")
+    const id = identity.data
+    // A missing control means no change. Only explicitly submitted fields are validated/written.
+    const raw = formObject(formData)
+    if (formData.has("featured")) raw.featured = formData.get("featured") === "true" ? "true" : ""
+    const result = courseSchema.partial().safeParse(raw)
+    if (!result.success) return fail(courseValidationMessage(result.error.issues))
+    const parsed = result.data
+    const changes = Object.fromEntries(Object.entries(parsed).filter(([key]) => formData.has(key)))
     const supabase = createSupabaseAdminClient()
     const { error } = await supabase
       .from("courses")
       .update({
-        ...parsed,
-        thumbnail_url: parsed.thumbnail_url ?? null,
-        duration_text: parsed.duration_text ?? null,
-        instructor_id: parsed.instructor_id ?? null,
-        outcomes: splitLines(parsed.outcomes),
-        requirements: splitLines(parsed.requirements),
+        ...changes,
+        ...(formData.has("thumbnail_url") ? { thumbnail_url: parsed.thumbnail_url ?? null } : {}),
+        ...(formData.has("duration_text") ? { duration_text: parsed.duration_text ?? null } : {}),
+        ...(formData.has("instructor_id") ? { instructor_id: parsed.instructor_id ?? null } : {}),
+        ...(formData.has("outcomes") ? { outcomes: splitLines(parsed.outcomes) } : {}),
+        ...(formData.has("requirements") ? { requirements: splitLines(parsed.requirements) } : {}),
       })
       .eq("id", id)
 
-    if (error) return fail(error.message)
+    if (error) return builderFailure(error)
     await audit("course.updated", "course", id, { title: parsed.title, status: parsed.status })
     revalidatePath("/admin/courses")
     revalidatePath(`/admin/course-builder/${id}`)
+    revalidatePath("/courses", "layout")
+    revalidatePath("/enroll")
     return ok("Course updated.")
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Course update failed.")
+    return builderFailure(error)
   }
 }
 
@@ -166,53 +209,142 @@ export async function deleteCourseAction(formData: FormData) {
   revalidatePath("/admin/courses")
 }
 
+function builderFailure(error: unknown) {
+  return fail(error instanceof AppAuthError || error instanceof AppForbiddenError
+    ? "You do not have permission to manage course content."
+    : "We could not save your changes. Please try again.")
+}
+
+export async function createCourseDraftAction(state: ActionState | undefined, formData: FormData) {
+  formData.set("status", "draft")
+  formData.delete("slug")
+  return createCourseAction(state, formData)
+}
+
+export async function updateCoursePublicationAction(state: ActionState | undefined, formData: FormData) {
+  const data = new FormData()
+  const status = courseSchema.shape.status.safeParse(formData.get("status"))
+  if (!status.success) return fail("Choose Publish, Unpublish, Save as draft, or Archive.")
+  data.set("id", String(formData.get("id") ?? ""))
+  data.set("status", status.data)
+  return updateCourseAction(state, data)
+}
+
+function refreshBuilder(courseId?: string) {
+  if (courseId) revalidatePath(`/admin/course-builder/${courseId}`)
+  revalidatePath("/student", "layout")
+  revalidatePath("/courses", "layout")
+}
+
 export async function createSectionAction(_: ActionState | undefined, formData: FormData) {
   try {
     await requireAdmin()
-    const parsed = sectionSchema.parse(formObject(formData))
+    const result = sectionEditorSchema.safeParse(formObject(formData))
+    if (!result.success) return fail("Enter a section title with at least 3 characters and select a course.")
+    const parsed = result.data
     const supabase = createSupabaseAdminClient()
-    const { data, error } = await supabase
-      .from("course_sections")
-      .insert({ ...parsed, description: parsed.description ?? null })
-      .select("id")
-      .single()
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const position = await appendPosition(supabase, "course_sections", "course_id", parsed.course_id)
+      const { data, error } = await supabase.from("course_sections")
+        .insert({ ...parsed, description: parsed.description ?? null, position }).select("id").single()
+      if (error?.code === "23505") continue
+      if (error || !data) return builderFailure(error)
+      await audit("section.created", "course_section", data.id, { course_id: parsed.course_id })
+      refreshBuilder(parsed.course_id)
+      return ok("Section created.")
+    }
+    return fail("Another section was added at the same time. Please try again.")
+  } catch (error) { return builderFailure(error) }
+}
 
-    if (error) return fail(error.message)
-    await audit("section.created", "course_section", data.id, { course_id: parsed.course_id })
-    revalidatePath(`/admin/course-builder/${parsed.course_id}`)
-    return ok("Section created.")
-  } catch (error) {
-    return fail(error instanceof Error ? error.message : "Section creation failed.")
-  }
+export async function updateSectionAction(_: ActionState | undefined, formData: FormData) {
+  try {
+    await requireAdmin()
+    const identity = lessonEditIdentitySchema.safeParse(formObject(formData))
+    const result = sectionEditorSchema.safeParse(formObject(formData))
+    if (!identity.success || !result.success) return fail("Check the section title and refresh the page before saving.")
+    const supabase = createSupabaseAdminClient()
+    const { data, error } = await supabase.from("course_sections")
+      .update({ title: result.data.title, description: result.data.description ?? null })
+      .eq("id", identity.data.id).eq("course_id", result.data.course_id).eq("updated_at", identity.data.updated_at).select("id").maybeSingle()
+    if (error) return builderFailure(error)
+    if (!data) return fail("This section changed. Refresh the page before trying again.")
+    await audit("section.updated", "course_section", data.id)
+    refreshBuilder(result.data.course_id)
+    return ok("Section saved.")
+  } catch (error) { return builderFailure(error) }
 }
 
 export async function createLessonAction(_: ActionState | undefined, formData: FormData) {
   try {
     await requireAdmin()
-    const parsed = lessonSchema.parse(formObject(formData))
+    const result = lessonEditorSchema.safeParse(formObject(formData))
+    if (!result.success) return fail("Enter a title with at least 3 characters and choose a section, content type, and visibility.")
+    if (formData.get("mux_asset_id") || formData.get("mux_playback_id") || formData.get("video_asset_id") || formData.get("youtube_url")) return fail("Create a draft, then choose a private video from your device.")
+    const parsed = result.data
+    const video = parseYouTubeUrl(String(formData.get("youtube_url") ?? ""))
+    if (parsed.lesson_type === "video" && String(formData.get("youtube_url") ?? "").trim() && !video) return fail("Enter a valid YouTube video link, such as youtube.com/watch?v=... or youtu.be/...")
+    if (parsed.lesson_type === "video" && parsed.status === "published") return fail("Create as Draft, then upload and attach a Ready video before publishing.")
+    if (parsed.status === "published" && [ "pdf_resource", "external_resource"].includes(parsed.lesson_type)) return fail("Save as Draft first, attach your content, then publish the lesson.")
+    if (parsed.status === "published" && parsed.lesson_type === "text" && !parsed.description) return fail("Add lesson text before publishing.")
     const supabase = createSupabaseAdminClient()
-    const { data, error } = await supabase
-      .from("lessons")
-      .insert({
-        ...parsed,
-        description: parsed.description ?? null,
-        mux_asset_id: parsed.mux_asset_id ?? null,
-        mux_playback_id: parsed.mux_playback_id ?? null,
-      })
-      .select("id, course_sections(course_id)")
-      .single()
+    const slugBase = parsed.title.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "lesson"
+    const slug = `${slugBase}-${crypto.randomUUID().slice(0, 8)}`
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const position = await appendPosition(supabase, "lessons", "section_id", parsed.section_id)
+      const { data, error } = await supabase.from("lessons").insert({
+        ...parsed, description: parsed.description ?? null, slug, position,
+        duration_seconds: 0, is_preview: false, youtube_video_id: parsed.lesson_type === "video" ? video?.videoId ?? null : null,
+      }).select("id, course_sections(course_id)").single()
+      if (error?.code === "23505") continue
+      if (error || !data) return builderFailure(error)
+      await audit("lesson.created", "lesson", data.id, { section_id: parsed.section_id })
+      const section = Array.isArray(data.course_sections) ? data.course_sections[0] : data.course_sections
+      refreshBuilder(section?.course_id)
+      return ok("Lesson created.")
+    }
+    return fail("Another lesson was added at the same time. Please try again.")
+  } catch (error) { return builderFailure(error) }
+}
 
-    if (error) return fail(error.message)
-    await audit("lesson.created", "lesson", data.id, { section_id: parsed.section_id })
-    const courseSection = data.course_sections as { course_id?: string } | { course_id?: string }[] | null
-    const courseId = Array.isArray(courseSection)
-      ? courseSection[0]?.course_id
-      : courseSection?.course_id
-    if (courseId) revalidatePath(`/admin/course-builder/${courseId}`)
-    return ok("Lesson created.")
-  } catch (error) {
-    return fail(error instanceof Error ? error.message : "Lesson creation failed.")
-  }
+export async function updateLessonAction(_: ActionState | undefined, formData: FormData) {
+  try {
+    await requireAdmin()
+    const identity = lessonEditIdentitySchema.safeParse(formObject(formData))
+    const result = lessonEditorSchema.omit({ section_id: true }).safeParse(formObject(formData))
+    if (!identity.success || !result.success) return fail("Check the title, content type, and visibility. Refresh the page if needed.")
+    const supabase = createSupabaseAdminClient()
+    const { data: lesson, error: loadError } = await supabase.from("lessons")
+      .select("*, lesson_resources(*), section:course_sections(course_id)").eq("id", identity.data.id).single()
+    if (loadError || !lesson) return fail("This lesson is unavailable. Refresh the page.")
+    const parsed = result.data
+    // Omitted input retains metadata; explicitly empty input removes the reference.
+    const hasVideoInput = parsed.lesson_type === "video" && !lesson.video_asset_id && lesson.video_source !== "r2" && formData.has("youtube_url")
+    const videoInput = String(formData.get("youtube_url") ?? "").trim()
+    const video = parseYouTubeUrl(videoInput)
+    if (hasVideoInput && videoInput && !video) return fail("Enter a valid YouTube video link, such as youtube.com/watch?v=... or youtu.be/...")
+    const videoId = hasVideoInput ? video?.videoId ?? null : lesson.youtube_video_id ?? null
+    if (parsed.status === "published") {
+      if (parsed.lesson_type === "video") {
+        if (lesson.video_asset_id) {
+          const { data: asset, error: assetError } = await supabase.from("lesson_video_assets").select("id, state, retired_at, cleanup_after").eq("id", lesson.video_asset_id).eq("lesson_id", lesson.id).single()
+          if (assetError || !asset || asset.state !== "ready" || asset.retired_at || asset.cleanup_after) return fail("Attach a Ready private video before publishing.")
+        } else if (lesson.video_source === "r2" || !isYouTubeVideoId(videoId)) return fail("Attach a Ready private video before publishing. Existing YouTube video links are supported only during rollout.")
+      }
+      if (parsed.lesson_type === "text" && !parsed.description) return fail("Add lesson text before publishing.")
+      if (parsed.lesson_type === "pdf_resource" && !(lesson.lesson_resources ?? []).some((resource: { resource_type: string }) => resource.resource_type !== "external_link")) return fail("Attach a file before publishing.")
+      if (parsed.lesson_type === "external_resource" && !(lesson.lesson_resources ?? []).some((resource: { resource_type: string; file_path: string }) => resource.resource_type === "external_link" && safeExternalUrlSchema.safeParse(resource.file_path).success)) return fail("Add a valid external link before publishing.")
+    }
+    const { data, error } = await supabase.from("lessons")
+      .update({ ...parsed, description: parsed.description ?? null, ...(hasVideoInput ? { youtube_video_id: videoId, ...(videoId !== lesson.youtube_video_id ? { duration_seconds: 0 } : {}) } : {}) })
+      .eq("id", identity.data.id).eq("updated_at", identity.data.updated_at).select("id").maybeSingle()
+    if (error) return builderFailure(error)
+    if (!data) return fail("This lesson changed. Refresh the page before trying again.")
+    await audit("lesson.updated", "lesson", data.id, { status: parsed.status })
+    const section = Array.isArray(lesson.section) ? lesson.section[0] : lesson.section
+    refreshBuilder(section?.course_id)
+    return ok("Lesson saved.")
+  } catch (error) { return builderFailure(error) }
 }
 
 export async function createStudentAction(_: ActionState | undefined, formData: FormData) {
@@ -556,20 +688,99 @@ export async function assignCourseAction(_: ActionState | undefined, formData: F
 export async function createPaymentMethodAction(_: ActionState | undefined, formData: FormData) {
   try {
     await requireAdmin()
-    const parsed = paymentMethodSchema.parse(formObject(formData))
+    const result = paymentMethodSchema.safeParse(formObject(formData))
+    if (!result.success) return fail(paymentValidationMessage(result.error.issues))
+    const parsed = result.data
     const supabase = createSupabaseAdminClient()
+    const { data: duplicate, error: lookupError } = await supabase.from("payment_methods")
+      .select("id").eq("method_type", parsed.method_type).eq("account_number", parsed.account_number).limit(1).maybeSingle()
+    if (lookupError) return paymentSettingsFailure(lookupError)
+    if (duplicate) return fail("This account already has a payment method. Edit or activate the existing method instead.")
     const { data, error } = await supabase
       .from("payment_methods")
-      .insert({ ...parsed, bank_name: parsed.bank_name ?? null, instructions: parsed.instructions ?? null })
+      .insert({ ...parsed, iban_number: parsed.iban_number ?? null, bank_name: parsed.bank_name ?? null, instructions: parsed.instructions ?? null })
       .select("id")
       .single()
 
-    if (error) return fail(error.message)
+    if (error || !data) return paymentSettingsFailure(error)
     await audit("payment_method.created", "payment_method", data.id, { display_name: parsed.display_name })
-    revalidatePath("/admin/payment-settings")
+    refreshPaymentSettings()
     return ok("Payment method created.")
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Payment method creation failed.")
+    return paymentSettingsFailure(error)
+  }
+}
+
+// Allowlisted field messages keep validation and infrastructure details out of the UI.
+function paymentValidationMessage(issues: { path: PropertyKey[] }[]) {
+  const messages: Record<string, string> = {
+    method_type: "Choose Bank Transfer, EasyPaisa, or JazzCash.",
+    display_name: "Display name must contain at least 3 characters.",
+    account_title: "Account title must contain at least 3 characters.",
+    account_number: "Account number must contain at least 3 characters.",
+    iban_number: "Enter only the IBAN value, starting with two country letters and two digits (15–34 characters). Do not include the word IBAN. Spaces are allowed.",
+    bank_name: "Check the bank name, or leave it blank.",
+    instructions: "Check the instructions, or leave them blank.",
+    is_active: "Choose whether this method is available for enrollment.",
+  }
+  return messages[String(issues[0]?.path[0])] ?? "Check the payment details and try again."
+}
+
+function paymentSettingsFailure(error: unknown): ActionState {
+  if (error instanceof AppAuthError || error instanceof AppForbiddenError) {
+    return fail("You do not have permission to manage payment methods. Please sign in with an admin account.")
+  }
+  return fail("We could not save this payment method. Please try again.")
+}
+
+function refreshPaymentSettings() {
+  revalidatePath("/admin/payment-settings")
+  revalidatePath("/enroll")
+}
+
+export async function updatePaymentMethodAction(_: ActionState | undefined, formData: FormData) {
+  try {
+    await requireAdmin()
+    const identity = paymentMethodIdentitySchema.safeParse(formObject(formData))
+    if (!identity.success) return fail("Refresh the page before editing this payment method.")
+    const result = paymentMethodSchema.omit({ is_active: true }).safeParse(formObject(formData))
+    if (!result.success) return fail(paymentValidationMessage(result.error.issues))
+    const parsed = result.data
+    const supabase = createSupabaseAdminClient()
+    const { data: duplicate, error: lookupError } = await supabase.from("payment_methods")
+      .select("id").eq("method_type", parsed.method_type).eq("account_number", parsed.account_number)
+      .not("id", "eq", identity.data.id).limit(1).maybeSingle()
+    if (lookupError) return paymentSettingsFailure(lookupError)
+    if (duplicate) return fail("Another method already uses this account. Edit that method instead.")
+    const { data, error } = await supabase.from("payment_methods")
+      .update({ ...parsed, iban_number: parsed.iban_number ?? null, bank_name: parsed.bank_name ?? null, instructions: parsed.instructions ?? null })
+      .eq("id", identity.data.id).eq("updated_at", identity.data.updated_at).select("id").maybeSingle()
+    if (error) return paymentSettingsFailure(error)
+    if (!data) return fail("This method has changed or is no longer available. Refresh the page before trying again.")
+    await audit("payment_method.updated", "payment_method", data.id, { display_name: parsed.display_name })
+    refreshPaymentSettings()
+    return ok("Payment details saved.")
+  } catch (error) {
+    return paymentSettingsFailure(error)
+  }
+}
+
+export async function updatePaymentMethodStatusAction(_: ActionState | undefined, formData: FormData) {
+  try {
+    await requireAdmin()
+    const result = paymentMethodStatusSchema.safeParse(formObject(formData))
+    if (!result.success) return fail("Refresh the page before changing availability.")
+    const { id, updated_at, is_active } = result.data
+    const supabase = createSupabaseAdminClient()
+    const { data, error } = await supabase.from("payment_methods").update({ is_active })
+      .eq("id", id).eq("updated_at", updated_at).select("id").maybeSingle()
+    if (error) return fail("We could not change availability. Please try again.")
+    if (!data) return fail("This method has changed or is no longer available. Refresh the page before trying again.")
+    await audit("payment_method.availability_changed", "payment_method", id, { is_active })
+    refreshPaymentSettings()
+    return ok(is_active ? "Payment method activated." : "Payment method deactivated. Previous payments are preserved.")
+  } catch (error) {
+    return paymentSettingsFailure(error)
   }
 }
 

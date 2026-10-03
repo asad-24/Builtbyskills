@@ -6,6 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 import type { AdminStats, AppResult, Course, CourseWithCurriculum, Profile, SectionWithLessons } from "@/types/lms"
 
 type PersonRef = Pick<Profile, "id" | "full_name" | "email"> & Partial<Pick<Profile, "status">>
+type BuilderVideoAsset = { id: string; state: string; original_name: string; retired_at: string | null; created_at: string; lesson_video_uploads: { id: string; initiated_by: string; state: string } | null }
+type BuilderSection = Omit<SectionWithLessons, "lessons"> & { lessons?: (NonNullable<SectionWithLessons["lessons"]>[number] & { video_assets?: BuilderVideoAsset[] })[] }
 type CourseRow = Course & { instructor?: PersonRef | null }
 type StudentRow = Profile
 type InstructorRow = Profile
@@ -30,11 +32,13 @@ type PaymentRow = Record<string, unknown> & {
   student?: PersonRef | null
 }
 type PaymentMethodRow = Record<string, unknown> & {
+  updated_at: string
   id: string
   method_type: string
   display_name: string
   account_title: string
   account_number: string
+  iban_number: string | null
   bank_name: string | null
   instructions: string | null
   is_active: boolean
@@ -58,6 +62,7 @@ type AnnouncementRow = Record<string, unknown> & {
   author?: PersonRef | null
 }
 type ContactRow = Record<string, unknown> & {
+  updated_at: string
   id: string
   full_name: string
   email: string
@@ -214,8 +219,7 @@ export async function getAdminWorkspaceData(): Promise<AppResult<AdminWorkspaceD
       supabase
         .from("payment_methods")
         .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50),
+        .order("created_at", { ascending: false }),
       supabase
         .from("live_classes")
         .select("*, course:courses(title), instructor:profiles(full_name,email)")
@@ -285,7 +289,7 @@ export async function getAdminWorkspaceData(): Promise<AppResult<AdminWorkspaceD
 
 export async function getCourseBuilderData(courseId: string): Promise<AppResult<CourseBuilderData>> {
   try {
-    await requireAdmin()
+    const admin = await requireAdmin()
     const supabase = createSupabaseAdminClient()
     const [course, instructors, sections] = await Promise.all([
       supabase.from("courses").select("*").eq("id", courseId).single(),
@@ -302,12 +306,37 @@ export async function getCourseBuilderData(courseId: string): Promise<AppResult<
     if (instructors.error) throw instructors.error
     if (sections.error) throw sections.error
 
+    let builderSections = (sections.data ?? []) as BuilderSection[]
+    // SELECT * exposes these columns only after the R2 migration. Before then,
+    // keep curriculum loading independent of its new tables and relationships.
+    const hasR2Schema = builderSections.some(section => (section.lessons ?? []).some(lesson =>
+      Object.hasOwn(lesson, "video_asset_id") && Object.hasOwn(lesson, "video_source"),
+    ))
+    if (hasR2Schema) {
+      const enrichedSections = await supabase
+        .from("course_sections")
+        .select("*, lessons(*, lesson_resources(*), video_assets:lesson_video_assets!lesson_video_assets_lesson_id_fkey(id, state, original_name, retired_at, created_at, lesson_video_uploads(id, initiated_by, state)))")
+        .eq("course_id", courseId)
+        .order("position", { ascending: true })
+        .order("position", { referencedTable: "lessons", ascending: true })
+      if (enrichedSections.error) throw enrichedSections.error
+      builderSections = (enrichedSections.data ?? []) as BuilderSection[]
+    }
+
     return {
       ok: true as const,
       data: {
         course: course.data as Course,
         instructors: (instructors.data ?? []) as PersonRef[],
-        sections: (sections.data ?? []) as SectionWithLessons[],
+        sections: builderSections.map(section => ({ ...section, lessons: (section.lessons ?? []).map(lesson => {
+          const candidates = (lesson.video_assets ?? []).filter(asset => !asset.retired_at && asset.id !== lesson.video_asset_id && !["deleted", "deleting"].includes(asset.state))
+            .sort((a, b) => b.created_at.localeCompare(a.created_at))
+          const pending = candidates.find(asset => asset.lesson_video_uploads?.initiated_by === admin.id && asset.lesson_video_uploads.state !== "canceled")
+          const upload = pending?.lesson_video_uploads
+          const { video_assets: _assets, ...safeLesson } = lesson
+          void _assets
+          return { ...safeLesson, ...(pending && upload ? { video_upload: { id: upload.id, state: pending.state === "ready" ? "ready" : upload.state, name: pending.original_name } } : {}) }
+        }) })) as SectionWithLessons[],
       },
     }
   } catch (error) {
@@ -337,13 +366,17 @@ export async function getPublicCourseBySlug(slug: string) {
     const supabase = createSupabaseAdminClient()
     const { data, error } = await supabase
       .from("courses")
-      .select("*, course_sections(*, lessons(*))")
+      .select("*, course_sections(*, lessons(id,title,lesson_type,status,position,is_preview))")
       .eq("slug", slug)
       .eq("status", "published")
       .single()
 
     if (error) throw error
-    return { ok: true as const, data: data as CourseWithCurriculum }
+    const course = data as CourseWithCurriculum
+    course.course_sections = (course.course_sections ?? []).sort((a, b) => a.position - b.position).map(section => ({
+      ...section, lessons: (section.lessons ?? []).filter(lesson => lesson.status === "published").sort((a, b) => a.position - b.position),
+    }))
+    return { ok: true as const, data: course }
   } catch (error) {
     return appError(error)
   }

@@ -30,11 +30,11 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
         ) : (
           <div className="grid gap-10 lg:grid-cols-[1fr_420px]">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-lime-700">{result.data.category}</p>
+              {result.data.category ? <p className="text-sm font-semibold uppercase tracking-wide text-lime-700">{result.data.category}</p> : null}
               <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">{result.data.title}</h1>
               <p className="mt-5 text-lg leading-8 text-slate-600">{result.data.description}</p>
               <div className="mt-6 flex flex-wrap gap-2 text-sm text-slate-600">
-                <span className="rounded-full bg-slate-100 px-3 py-1">{result.data.level}</span>
+                {result.data.level ? <span className="rounded-full bg-slate-100 px-3 py-1">{result.data.level}</span> : null}
                 <span className="rounded-full bg-slate-100 px-3 py-1">{result.data.duration_text ?? "Flexible schedule"}</span>
                 <span className="rounded-full bg-lime-100 px-3 py-1 text-lime-800">{formatMoney(result.data.price, result.data.currency)}</span>
               </div>
@@ -67,7 +67,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
                         {(section.lessons ?? []).map((lesson: LessonWithResources) => (
                           <li key={lesson.id} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
                             <span>{lesson.title}</span>
-                            <span>{lesson.is_preview ? "Preview" : lesson.lesson_type.replaceAll("_", " ")}</span>
+                            <span>{lesson.lesson_type.replaceAll("_", " ")}</span>
                           </li>
                         ))}
                       </ul>

@@ -1,6 +1,6 @@
 import Link from "next/link"
 
-import { AdminTable, BuilderLink, PageHeader, SetupNotice, StatusBadge } from "@/components/admin/admin-ui"
+import { AdminTable, BuilderLink, PageHeader, StatusBadge } from "@/components/admin/admin-ui"
 import { getAdminWorkspaceData } from "@/features/admin/data"
 
 export const metadata = {
@@ -9,11 +9,11 @@ export const metadata = {
 
 export default async function CourseBuilderIndexPage() {
   const result = await getAdminWorkspaceData()
-  if (!result.ok) return <SetupNotice message={result.message} />
+  if (!result.ok) return <p role="alert" className="text-sm text-rose-700">The course builder is unavailable. Please sign in with an admin account or try again.</p>
 
   return (
     <>
-      <PageHeader title="Course Builder" description="Open a course to manage metadata, sections, lessons, resources, and Mux playback IDs." />
+      <PageHeader title="Course Builder" description="Open a course to manage its details, sections, lessons, videos, and resources." />
       <AdminTable
         columns={["Course", "Status", "Instructor", "Open builder"]}
         rows={result.data.courses.map((course) => [

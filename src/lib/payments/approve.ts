@@ -64,7 +64,10 @@ export async function approvePayment(client: Client, paymentId: string, adminId:
         email: prepared.email,
         email_confirm: true,
         user_metadata: { full_name: prepared.full_name, role: "student" },
-        app_metadata: { payment_provisioned: true },
+        // Auth generates an unknown random password when password is omitted.
+        // The RPC uses this server-owned marker and last_sign_in_at to distinguish
+        // an unused provisioned account from a student who has set up access.
+        app_metadata: { payment_provisioned: true, payment_password_setup_required: true },
       })
       if (error) {
         // A concurrent attempt (or an earlier timeout) may already have created
@@ -89,25 +92,20 @@ export async function approvePayment(client: Client, paymentId: string, adminId:
     // committed first, so replay never provisions or sends an activation twice.
     let sent = false
     try {
+      let actionUrl: string | undefined
       if (committed.activation) {
         const { data, error } = await client.auth.admin.generateLink({
           type: "recovery", email: committed.email!,
           options: { redirectTo: `${getOptionalServerEnv().siteUrl}/auth/callback` },
         })
-        if (!error && data.properties.action_link) {
-          const result = await sendTransactionalEmail({
-            to: committed.email!, subject: "Activate your Builtbyskills account",
-            html: emailTemplates.accountActivation({ name: committed.full_name, actionUrl: data.properties.action_link }),
-          })
-          sent = result.ok
-        }
-      } else {
-        const result = await sendTransactionalEmail({
-          to: committed.email!, subject: "Builtbyskills payment approved",
-          html: emailTemplates.paymentApproved({ name: committed.full_name, courseTitle: committed.course_title }),
-        })
-        sent = result.ok
+        if (error || !data?.properties?.action_link) throw new Error("activation_link_unavailable")
+        actionUrl = data.properties.action_link
       }
+      const result = await sendTransactionalEmail({
+        to: committed.email!, subject: "Builtbyskills payment approved",
+        html: emailTemplates.paymentApproved({ name: committed.full_name, courseTitle: committed.course_title, actionUrl }),
+      })
+      sent = result.ok
     } catch {
       // Email cannot roll back Auth or the committed enrollment.
     }

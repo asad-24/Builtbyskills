@@ -1,3 +1,5 @@
+import { DeleteRecord, EditInstructor } from "@/components/admin/record-actions"
+import { deleteInstructorAction } from "@/actions/admin-records"
 import { AdminTable, PageHeader, SetupNotice, StatusBadge } from "@/components/admin/admin-ui"
 import { CreateInstructorDialog } from "@/components/admin/instructor-actions"
 import { getAdminWorkspaceData } from "@/features/admin/data"
@@ -19,12 +21,13 @@ export default async function AdminInstructorsPage() {
         action={<CreateInstructorDialog />}
       />
       <AdminTable
-        columns={["Name", "Email", "Status", "Created"]}
+        columns={["Name", "Email", "Status", "Created", "Actions"]}
         rows={result.data.instructors.map((instructor) => [
           instructor.full_name,
           instructor.email,
           <StatusBadge key={instructor.id}>{instructor.status}</StatusBadge>,
           formatDate(instructor.created_at),
+          <div key={instructor.id} className="flex flex-wrap gap-2"><EditInstructor instructor={instructor} /><DeleteRecord id={instructor.id} updatedAt={instructor.updated_at} label={instructor.full_name} action={deleteInstructorAction} description="This will retire the instructor by making their profile inactive. Their account, course assignments, live classes, and history will be preserved." /></div>,
         ])}
       />
     </>

@@ -7,7 +7,7 @@ Builtbyskills is a Next.js App Router academy and LMS for practical digital skil
 - Next.js 16 App Router, React 19, TypeScript strict mode
 - Tailwind CSS 4 and shadcn/ui
 - Supabase PostgreSQL, Auth, RLS, and Storage
-- Mux direct uploads and signed playback
+- Private Cloudflare R2 lesson videos with server-authorized presigned playback
 - Brevo API transactional email helpers
 - Vercel Analytics and Sentry-ready error boundaries
 
@@ -25,10 +25,6 @@ Fill `.env.local` with:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `MUX_TOKEN_ID`
-- `MUX_TOKEN_SECRET`
-- `MUX_SIGNING_KEY_ID`
-- `MUX_SIGNING_PRIVATE_KEY`
 - `BREVO_API_KEY`
 - `EMAIL_FROM`
 - `EMAIL_FROM_NAME` (optional)
@@ -50,13 +46,19 @@ Never commit real secrets.
 
 Seed files intentionally do not contain production passwords.
 
-## Mux Setup
+## Lesson Videos (Private R2)
 
-1. Create a Mux access token.
-2. Create a Mux signing key.
-3. Add token ID, token secret, signing key ID, and signing private key to Vercel and `.env.local`.
-4. Admin video upload URLs are generated through `/api/mux/direct-upload`.
-5. Student playback tokens are generated through `/api/mux/playback-token` only after server-side enrollment checks.
+1. Review and apply the prerequisite LMS/YouTube security migrations, then `supabase/migrations/202610030001_private_r2_lesson_videos.sql` and the forward migration `supabase/migrations/202610030002_admin_verified_r2_video_ready.sql`. Preserve historical migrations; do not edit an already-applied migration.
+2. Configure the private `builtbyskills-course-videos` R2 bucket and server-only `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`, and `R2_BUCKET_NAME`. Keep public access disabled and configure exact-origin CORS as described in [Private R2 course videos](docs/private-r2-videos.md).
+3. In Course Builder, create a Video lesson as Draft, then select a browser-compatible MP4 up to **1,000,000,000 bytes (decimal 1 GB)**. The existing private multipart upload flow sends the video to R2.
+4. The server verifies the completed object's binding, size, content type, ETag, and metadata. A verified upload can become Ready without FFmpeg, ffprobe, deep codec inspection, or an external media-validation worker. Ready confirms object verification, not browser compatibility.
+5. Preview the Ready private video to check picture, sound, and seeking. Explicitly save the Ready video attachment, then publish the lesson. Preview does not save student progress; an upload does not automatically publish a lesson.
+
+Student playback checks authentication, publication, and active exact-course enrollment on the server before redirecting to a short-lived R2 presigned GET URL. Each URL lasts at most **five minutes**, capped by enrollment expiry. This is temporary playback access: course access duration is controlled by enrollment dates. An authorized student whose enrollment remains active can use Retry video to obtain fresh access while retaining the saved resume position. R2 serves the video and byte ranges directly; no Cloudflare Worker or external playback gateway is required, and the bucket remains private.
+
+Playback preserves seeking, progress, resume, explicit/ended completion, and a moving personalized watermark with reduced-motion support. Casual download deterrence includes `nodownload`, Picture-in-Picture restrictions where supported, player context-menu blocking, drag prevention, and player-scoped Ctrl+S/Cmd+S blocking. These controls are not DRM and cannot guarantee download or screen-recording prevention.
+
+Existing legacy YouTube lessons remain compatible during rollout; their unlisted links remain shareable outside the LMS. Historical Mux schema and migrations remain for compatibility/history. Neither YouTube nor Mux is the active workflow for authoring new paid lesson videos.
 
 ## Vercel Deployment
 

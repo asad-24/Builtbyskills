@@ -103,8 +103,8 @@ describe("StudentRowActions", () => {
     await user.click(screen.getByRole("button", { name: "Open actions for Mubarra Bashir" }))
     await user.click(screen.getByRole("button", { name: "Delete" }))
 
-    expect(screen.getByRole("dialog", { name: "Delete student" })).toBeInTheDocument()
-    expect(screen.getByText(/permanently remove the student from the table/i)).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Delete student" })).toBeInTheDocument()
+    expect(screen.getByRole("alertdialog", { name: "Delete student" })).toBeInTheDocument()
+    expect(screen.getByText(/permanently remove Mubarra Bashir/i)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Confirm delete" })).toBeInTheDocument()
   })
 })

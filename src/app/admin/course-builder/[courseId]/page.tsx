@@ -1,7 +1,7 @@
-import { createLessonAction, createSectionAction, updateCourseAction } from "@/actions/admin"
-import { ActionForm } from "@/components/admin/action-form"
-import { AdminTable, PageHeader, Panel, SelectField, SetupNotice, StatusBadge, TextAreaField, TextField } from "@/components/admin/admin-ui"
-import { ThumbnailUploadInput } from "@/components/admin/thumbnail-upload-input"
+import { CourseDetailsForm, CoursePublication } from "@/components/admin/course-details-form"
+import { PageHeader, Panel } from "@/components/admin/admin-ui"
+import { LessonEditor, SectionEditor } from "@/components/admin/lesson-editor"
+import { safeExternalUrl } from "@/lib/validations/course-builder"
 import { getCourseBuilderData } from "@/features/admin/data"
 
 export const metadata = {
@@ -12,93 +12,48 @@ export default async function CourseBuilderPage({ params }: { params: Promise<{ 
   const { courseId } = await params
   const result = await getCourseBuilderData(courseId)
 
-  if (!result.ok) return <SetupNotice message={result.message} />
+  if (!result.ok) return <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">The course builder is unavailable. Please sign in with an admin account or try again.</p>
 
   const { course, instructors, sections } = result.data
   const instructorOptions = [
     { value: "", label: "No instructor" },
     ...instructors.map((instructor) => ({ value: instructor.id, label: instructor.full_name })),
   ]
-  const sectionOptions = sections.map((section) => ({ value: section.id, label: `${section.position}. ${section.title}` }))
+  const sectionOptions = sections.map(section => ({ id: section.id, title: section.title }))
 
   return (
     <>
-      <PageHeader title={`Course Builder: ${course.title}`} description="Edit course metadata and add ordered sections and lessons. Video uploads use Mux direct-upload routes." />
+      <PageHeader title={`Course Builder: ${course.title}`} description="Manage course details, sections, and lessons. New content is added at the end automatically." />
       <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
-        <div className="grid gap-6">
-          <Panel title="Course metadata">
-            <ActionForm action={updateCourseAction} submitLabel="Update course">
-              <input type="hidden" name="id" value={course.id} />
-              <TextField name="title" label="Course title" defaultValue={course.title} required />
-              <TextField name="slug" label="Slug" defaultValue={course.slug} required />
-              <TextField name="short_description" label="Short description" defaultValue={course.short_description} required />
-              <TextAreaField name="description" label="Full description" defaultValue={course.description} required />
-              <ThumbnailUploadInput name="thumbnail_url" defaultValue={course.thumbnail_url} />
-              <TextField name="category" label="Category" defaultValue={course.category} required />
-              <TextField name="level" label="Level" defaultValue={course.level} required />
-              <TextField name="duration_text" label="Duration" defaultValue={course.duration_text} />
-              <TextField name="price" label="Price" type="number" defaultValue={course.price} required />
-              <TextField name="currency" label="Currency" defaultValue={course.currency} required />
-              <SelectField name="status" label="Status" defaultValue={course.status} options={["draft", "published", "unpublished", "archived"].map((value) => ({ value, label: value }))} />
-              <SelectField name="instructor_id" label="Instructor" defaultValue={course.instructor_id} options={instructorOptions} />
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                <input type="checkbox" name="featured" value="true" defaultChecked={course.featured} className="size-4 rounded border-slate-300" />
-                Featured course
-              </label>
-              <TextAreaField name="outcomes" label="Outcomes, one per line" defaultValue={course.outcomes?.join("\n")} rows={3} />
-              <TextAreaField name="requirements" label="Requirements, one per line" defaultValue={course.requirements?.join("\n")} rows={3} />
-            </ActionForm>
+        <div className="grid min-w-0 gap-6">
+          <Panel title="Course details">
+            <CourseDetailsForm key={course.updated_at} course={course} instructorOptions={instructorOptions} />
           </Panel>
-          <Panel title="Add section">
-            <ActionForm action={createSectionAction} submitLabel="Add section">
-              <input type="hidden" name="course_id" value={course.id} />
-              <TextField name="title" label="Section title" required />
-              <TextAreaField name="description" label="Description" rows={3} />
-              <TextField name="position" label="Position" type="number" defaultValue={sections.length + 1} required />
-            </ActionForm>
-          </Panel>
+          <Panel title="Publication"><CoursePublication course={course} /></Panel>
+          <Panel title="Add section"><SectionEditor courseId={course.id} /></Panel>
           <Panel title="Add lesson">
-            <ActionForm action={createLessonAction} submitLabel="Add lesson">
-              <SelectField name="section_id" label="Section" options={sectionOptions} />
-              <TextField name="title" label="Lesson title" required />
-              <TextField name="slug" label="Slug" required />
-              <TextAreaField name="description" label="Description" rows={3} />
-              <SelectField name="lesson_type" label="Lesson type" options={[
-                { value: "video", label: "Video" },
-                { value: "text", label: "Text" },
-                { value: "pdf_resource", label: "PDF/resource" },
-                { value: "live_class", label: "Live class" },
-                { value: "external_resource", label: "External resource" },
-              ]} />
-              <TextField name="mux_asset_id" label="Mux asset ID" />
-              <TextField name="mux_playback_id" label="Mux playback ID" />
-              <TextField name="duration_seconds" label="Duration seconds" type="number" defaultValue={0} />
-              <TextField name="position" label="Position" type="number" defaultValue={1} required />
-              <SelectField name="status" label="Status" options={["draft", "published", "archived"].map((value) => ({ value, label: value }))} />
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                <input type="checkbox" name="is_preview" value="true" className="size-4 rounded border-slate-300" />
-                Preview lesson
-              </label>
-            </ActionForm>
+            {sections.length ? <LessonEditor sections={sectionOptions} /> : <p className="text-sm text-slate-600">Add your first section, then create lessons inside it.</p>}
           </Panel>
         </div>
-        <div className="grid gap-6">
-          {sections.map((section) => (
-            <Panel key={section.id} title={`${section.position}. ${section.title}`}>
+        <div className="grid min-w-0 gap-6">
+          <p className="text-sm font-medium text-slate-700">Add your content below each lesson. Choose a private video or file from your device, enter an external link, or write lesson text. Save changes before publishing.</p>
+          <p className="text-sm text-slate-600">Draft and archived lessons are hidden from students. Published lessons require active enrollment. Public preview playback is unavailable.</p>
+          {sections.map((section, sectionIndex) => (
+            <Panel key={section.id} title={`${sectionIndex + 1}. ${section.title}`}>
               <p className="mb-4 text-sm text-slate-500">{section.description}</p>
-              <AdminTable
-                columns={["Order", "Lesson", "Type", "Status", "Preview", "Mux playback"]}
-                rows={(section.lessons ?? []).map((lesson) => [
-                  lesson.position,
-                  lesson.title,
-                  lesson.lesson_type,
-                  <StatusBadge key={lesson.id}>{lesson.status}</StatusBadge>,
-                  lesson.is_preview ? "Yes" : "No",
-                  lesson.mux_playback_id ?? "Not attached",
-                ])}
-              />
+              <details className="mb-5"><summary className="cursor-pointer text-sm font-semibold">Edit section</summary><div className="mt-3"><SectionEditor key={`section-editor:${section.id}:${section.updated_at ?? ""}`} courseId={course.id} section={section} /></div></details>
+              {(section.lessons ?? []).length === 0 ? <p className="text-sm text-slate-500">No lessons yet. Add a lesson using the form.</p> : null}
+              <div className="grid gap-4">
+                {(section.lessons ?? []).map((lesson, index) => <details open key={lesson.id} className="min-w-0 rounded-lg border border-slate-200 p-4">
+                  <summary className="cursor-pointer break-words text-sm font-semibold">{index + 1}. {lesson.title} <span className="ml-2 font-normal capitalize text-slate-500">{lesson.status}</span><span className="block font-normal text-slate-600">Edit lesson and add content</span></summary>
+                  <div className="mt-4 grid gap-5">
+                    <LessonEditor key={`lesson-editor:${lesson.id}:${lesson.updated_at ?? ""}`} lesson={{ id: lesson.id, updated_at: lesson.updated_at ?? "", title: lesson.title, description: lesson.description, lesson_type: lesson.lesson_type, status: lesson.status, is_preview: lesson.is_preview, youtube_video_id: lesson.youtube_video_id, video_asset_id: lesson.video_asset_id, video_source: lesson.video_source, video_upload: lesson.video_upload }} content={{ legacyVideo: !!(lesson.mux_playback_id || lesson.mux_asset_id || lesson.mux_upload_id), resources: (lesson.lesson_resources ?? []).map(resource => ({ id: resource.id, title: resource.title, resource_type: resource.resource_type, url: resource.resource_type === "external_link" ? safeExternalUrl(resource.file_path) ?? undefined : undefined })) }} />
+                  </div>
+                </details>)}
+              </div>
             </Panel>
           ))}
+
         </div>
       </div>
     </>

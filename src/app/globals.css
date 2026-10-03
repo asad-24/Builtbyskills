@@ -139,32 +139,32 @@
 }
 
 @layer utilities {
-  .hero-grid {
+  .bbs-theme .hero-grid {
     background-image:
-      linear-gradient(rgba(247, 247, 242, 0.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(247, 247, 242, 0.045) 1px, transparent 1px),
-      linear-gradient(135deg, transparent 0 58%, rgba(184, 255, 61, 0.13) 58% 59%, transparent 59% 100%);
+      linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(135deg, transparent 0 58%, rgba(253, 190, 1, 0.13) 58% 59%, transparent 59% 100%);
     background-size: 56px 56px, 56px 56px, 100% 100%;
   }
 
-  .accent-grid {
+  .bbs-theme .accent-grid {
     background-image:
-      linear-gradient(rgba(8, 8, 8, 0.09) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(8, 8, 8, 0.09) 1px, transparent 1px);
+      linear-gradient(rgba(2, 6, 44, 0.09) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(2, 6, 44, 0.09) 1px, transparent 1px);
     background-size: 52px 52px;
   }
 
-  .course-card-lines {
+  .bbs-theme .course-card-lines {
     background-image:
-      linear-gradient(135deg, rgba(184, 255, 61, 0.14), transparent 38%),
+      linear-gradient(135deg, rgba(253, 190, 1, 0.14), transparent 38%),
       repeating-linear-gradient(
         90deg,
-        rgba(247, 247, 242, 0.05) 0 1px,
+        rgba(255, 255, 255, 0.05) 0 1px,
         transparent 1px 34px
       );
   }
 
-  .hero-visual-card::after {
+  .bbs-theme .hero-visual-card::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -173,7 +173,7 @@
       110deg,
       transparent 0%,
       transparent 42%,
-      rgba(184, 255, 61, 0.16) 50%,
+      rgba(253, 190, 1, 0.16) 50%,
       transparent 58%,
       transparent 100%
     );
@@ -257,5 +257,202 @@
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+/* Branding is inherited only by public/auth surfaces and the student shell.
+   Keep root tokens intact so Admin and Instructor retain their existing theme. */
+.bbs-theme {
+  --bbs-navy: #02062C;
+  --bbs-yellow: #FDBE01;
+  --bbs-white: #FFFFFF;
+  --bbs-yellow-hover: #FFD34D;
+  --bbs-navy-hover: #111640;
+  --background: #FFFFFF;
+  --foreground: #02062C;
+  --card: #FFFFFF;
+  --card-foreground: #02062C;
+  --popover: #FFFFFF;
+  --popover-foreground: #02062C;
+  --primary: #FDBE01;
+  --primary-foreground: #02062C;
+  --secondary: #02062C;
+  --secondary-foreground: #FFFFFF;
+  --muted: #F3F4F8;
+  --muted-foreground: #4D506B;
+  --accent: #FFF4CC;
+  --accent-foreground: #02062C;
+  --border: #DCDEE8;
+  --input: #C3C5D2;
+  --ring: #02062C;
+  --color-slate-50: #F7F8FB;
+  --color-slate-100: #EFF0F5;
+  --color-slate-200: #DCDEE8;
+  --color-slate-300: #C3C5D2;
+  --color-slate-400: #747891;
+  --color-slate-500: #5A5E78;
+  --color-slate-600: #4D506B;
+  --color-slate-700: #303451;
+  --color-slate-800: #1B2041;
+  --color-slate-900: #0D1236;
+  --color-slate-950: #02062C;
+  --color-lime-50: #FFFAE8;
+  --color-lime-100: #FFF4CC;
+  --color-lime-200: #FFE699;
+  --color-lime-300: #FDBE01;
+  --color-lime-500: #02062C;
+  --color-lime-600: #02062C;
+  --color-lime-700: #02062C;
+  --color-lime-800: #02062C;
+}
+
+.bbs-theme::selection,
+.bbs-theme ::selection {
+  background: #FDBE01;
+  color: #02062C;
+}
+
+/* Yellow is reserved for filled accents; links need navy contrast on white. */
+.bbs-theme [data-slot="button"][data-variant="link"] {
+  color: #02062C;
+}
+
+.bbs-student > header {
+  background: #02062C;
+  color: #FFFFFF;
+  border-color: #02062C;
+}
+
+.bbs-student > header span {
+  color: #FFFFFF;
+}
+
+.bbs-student > header [data-slot="button"] {
+  color: #02062C;
+}
+
+.bbs-student-nav a:hover,
+.bbs-student-nav a[aria-current="page"] {
+  background: #FDBE01;
+  color: #02062C;
+}
+
+/* Student presentation only; shared Admin/Instructor and media styles stay intact. */
+.bbs-student > header > div {
+  gap: 1rem;
+  padding-block: 0.75rem;
+}
+
+.bbs-student > header > div > div {
+  min-width: 0;
+}
+
+.bbs-student > header > div > div > span {
+  max-width: 18rem;
+  overflow-wrap: anywhere;
+}
+
+.bbs-student > header [data-slot="button"] {
+  min-height: 2.75rem;
+  background: #FFFFFF;
+}
+
+.bbs-student > div {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.bbs-student > div > main {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bbs-student-nav {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: #FFFFFF;
+  align-self: start;
+}
+
+.bbs-student-nav a {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  padding: 0.75rem;
+  border-radius: 0.625rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.bbs-student-nav a[aria-current="page"] {
+  font-weight: 600;
+  box-shadow: inset 3px 0 #02062C;
+}
+
+.bbs-student-nav a:focus-visible,
+.bbs-student-brand:focus-visible {
+  outline: 2px solid #FDBE01;
+  outline-offset: 2px;
+}
+
+.bbs-student-nav a:focus-visible {
+  outline-color: #02062C;
+}
+
+.bbs-student > div > main :where(.border.bg-white) {
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgb(2 6 44 / 4%);
+}
+
+.bbs-student > div > main > .grid > .border.bg-white {
+  border-top: 3px solid #FDBE01;
+}
+
+.bbs-student > div > main > .border.bg-white {
+  border-left: 3px solid #FDBE01;
+}
+
+.bbs-student > div > main table thead {
+  background: #EFF0F5;
+}
+
+.bbs-student > div > main table th {
+  color: #02062C;
+  font-size: 0.75rem;
+  letter-spacing: 0.025em;
+}
+
+.bbs-student > div > main table td {
+  line-height: 1.6;
+}
+
+.bbs-student > div > main table tbody tr:hover {
+  background: #F7F8FB;
+}
+
+@media (min-width: 1024px) {
+  .bbs-student > div {
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 2rem;
+    padding-block: 2rem;
+  }
+
+  .bbs-student-nav {
+    display: grid;
+    overflow-x: visible;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bbs-student-nav a {
+    transition: background-color 150ms ease, color 150ms ease;
   }
 }

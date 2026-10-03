@@ -9,6 +9,8 @@ export type SupabaseChainable = {
   eq: Mock
   or: Mock
   not: Mock
+  limit: Mock
+  order: Mock
   single: Mock
   maybeSingle: Mock
   setResolveWith: (data: unknown, error?: unknown) => void
@@ -17,6 +19,7 @@ export type SupabaseChainable = {
 
 export type SupabaseMock = {
   from: Mock
+  storage: { from: Mock; info: Mock }
   auth: {
     signInWithPassword: Mock
     getUser: Mock
@@ -53,6 +56,8 @@ export function createSupabaseMock(): SupabaseMockFactory {
       eq: vi.fn(() => chain),
       or: vi.fn(() => chain),
       not: vi.fn(() => chain),
+      limit: vi.fn(() => chain),
+      order: vi.fn(() => chain),
       single: vi.fn().mockResolvedValue({ data: null, error: null }),
       maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
       setResolveWith: (data: unknown, error: unknown = null) => {
@@ -66,7 +71,9 @@ export function createSupabaseMock(): SupabaseMockFactory {
     return { chain, calls }
   }
 
+  const storageInfo = vi.fn().mockResolvedValue({ data: { id: "uploaded-receipt" }, error: null })
   const mock: SupabaseMock = {
+    storage: { from: vi.fn(() => ({ info: storageInfo })), info: storageInfo },
     from: vi.fn((table: string) => {
       if (!tableChains.has(table)) {
         tableChains.set(table, createTableChain())

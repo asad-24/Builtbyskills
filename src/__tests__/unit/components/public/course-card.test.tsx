@@ -29,6 +29,12 @@ const mockCourse: Course = {
 }
 
 describe("CourseCard", () => {
+  it("supports optional category and audience without empty badges or broken enrollment links", () => {
+    const { container } = render(<CourseCard course={{ ...mockCourse, category: "", level: "", currency: "USD", price: 25.5 }} />)
+    expect(container.querySelectorAll("span")).toHaveLength(2)
+    expect(screen.getByRole("link", { name: "View Details" })).toHaveAttribute("href", "/courses/shopify-mastery")
+    expect(screen.getByRole("link", { name: "Enroll Now" })).toHaveAttribute("href", "/enroll?course=course-1")
+  })
   it("renders course title and description", () => {
     render(<CourseCard course={mockCourse} />)
     expect(screen.getByText("Shopify Mastery")).toBeInTheDocument()

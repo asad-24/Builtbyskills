@@ -1,9 +1,7 @@
 import Link from "next/link"
 
-import { deleteCourseAction } from "@/actions/admin"
 import { AdminTable, BuilderLink, PageHeader, SetupNotice, StatusBadge } from "@/components/admin/admin-ui"
-import { CreateCourseDialog } from "@/components/admin/course-actions"
-import { Button } from "@/components/ui/button"
+import { CreateCourseDialog, DeleteCourse } from "@/components/admin/course-actions"
 import { getAdminWorkspaceData } from "@/features/admin/data"
 import { formatMoney } from "@/lib/format"
 
@@ -39,10 +37,7 @@ export default async function AdminCoursesPage() {
           course.featured ? "Yes" : "No",
           <div key={course.id} className="flex gap-2">
             <BuilderLink id={course.id} />
-            <form action={deleteCourseAction}>
-              <input type="hidden" name="id" value={course.id} />
-              <Button variant="destructive" size="sm" type="submit">Delete</Button>
-            </form>
+            <DeleteCourse id={course.id} title={course.title} />
           </div>,
         ])}
       />

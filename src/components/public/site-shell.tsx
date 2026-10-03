@@ -13,7 +13,7 @@ const links = [
 
 export function PublicHeader() {
   return (
-    <header className="border-b border-white/10 bg-[#080808] text-white">
+    <header className="bbs-theme border-b border-white/10 bg-[#02062C] text-white">
       <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-3">
           <Image src="/img/BBS LOGO.png" alt="Builtbyskills logo" width={38} height={38} className="rounded-md" />
@@ -36,7 +36,7 @@ export function PublicHeader() {
 
 export function PublicPageShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="bbs-theme min-h-screen bg-white text-slate-950">
       <PublicHeader />
       {children}
       <footer className="border-t border-slate-200 bg-slate-950 px-4 py-10 text-white sm:px-6">

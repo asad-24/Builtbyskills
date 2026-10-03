@@ -1,7 +1,10 @@
 import Link from "next/link"
 
-import { AdminTable, PageHeader, SetupNotice, StatusBadge } from "@/components/admin/admin-ui"
-import { MuxLessonPlayer } from "@/components/student/mux-lesson-player"
+import { PageHeader } from "@/components/admin/admin-ui"
+import { YouTubeLessonPlayer } from "@/components/student/youtube-lesson-player"
+import { R2LessonPlayer } from "@/components/student/r2-lesson-player"
+import { studentVideoWatermark } from "@/lib/lessons/youtube"
+import { LessonCompletion } from "@/components/student/lesson-completion"
 import { Button } from "@/components/ui/button"
 import { getStudentLessonData } from "@/features/student/player-data"
 import type { LessonResource, LessonWithResources, SectionWithLessons } from "@/types/lms"
@@ -13,7 +16,7 @@ export const metadata = {
 export default async function StudentLessonPage({ params }: { params: Promise<{ lessonId: string }> }) {
   const { lessonId } = await params
   const result = await getStudentLessonData(lessonId)
-  if (!result.ok) return <SetupNotice message={result.message} />
+  if (!result.ok) return <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">{result.message}</p>
 
   const sections = result.data.course.course_sections ?? []
 
@@ -37,23 +40,32 @@ export default async function StudentLessonPage({ params }: { params: Promise<{ 
         </div>
       </aside>
       <main>
-        <PageHeader title={result.data.lesson.title} description={result.data.lesson.description ?? "Distraction-free course lesson."} />
-        <MuxLessonPlayer
+        <PageHeader title={result.data.lesson.title} description={result.data.lesson.lesson_type === "text" ? "Read the lesson, then mark it complete." : result.data.lesson.description ?? "Course lesson."} />
+        {result.data.lesson.lesson_type === "video" ? result.data.lesson.video_asset_id ? <R2LessonPlayer
+          key={`${result.data.lesson.id}:${result.data.lesson.video_asset_id}`}
+          lessonId={result.data.lesson.id} title={result.data.lesson.title}
+          watermark={studentVideoWatermark(result.data.profile.full_name, result.data.profile.email)}
+          initiallyCompleted={!!result.data.progress?.is_completed} startTime={result.data.progress?.progress_seconds ?? 0}
+        /> : <YouTubeLessonPlayer
           lessonId={result.data.lesson.id}
-          playbackId={result.data.lesson.mux_playback_id}
+          key={`${result.data.lesson.id}:${result.data.lesson.youtube_video_id ?? "unavailable"}`}
+          videoId={result.data.lesson.video_source === "r2" ? null : result.data.lesson.youtube_video_id ?? null}
+          watermark={studentVideoWatermark(result.data.profile.full_name, result.data.profile.email)}
+          initiallyCompleted={!!result.data.progress?.is_completed}
           title={result.data.lesson.title}
           startTime={result.data.progress?.progress_seconds ?? 0}
-        />
+        /> : <>
+          {result.data.lesson.lesson_type === "text" ? <article className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-6 text-base leading-8 text-slate-800">{result.data.lesson.description || "Lesson text is not available yet."}</article> : null}
+          {result.data.lesson.lesson_type === "pdf_resource" ? <p className="text-sm text-slate-600">Open the private files below to study this lesson.</p> : null}
+          {result.data.lesson.lesson_type === "external_resource" ? <p className="text-sm text-slate-600">Open the links below. Content is provided on an external website.</p> : null}
+          {result.data.lesson.lesson_type === "live_class" ? <p className="text-sm text-slate-600">Meeting times and joining links are available in <Link className="underline" href="/student/live-classes">Live Classes</Link>. This lesson contains class information, not an attendance record.</p> : null}
+          <LessonCompletion lessonId={result.data.lesson.id} initiallyCompleted={!!result.data.progress?.is_completed} />
+        </>}
         <section className="mt-6">
           <h2 className="mb-3 font-semibold">Resources</h2>
-          <AdminTable
-            columns={["Title", "Type", "Access"]}
-            rows={(result.data.lesson.lesson_resources ?? []).map((resource: LessonResource) => [
-              resource.title,
-              resource.resource_type,
-              <StatusBadge key={resource.id}>authorized</StatusBadge>,
-            ])}
-          />
+          {(result.data.lesson.lesson_resources ?? []).length ? <ul className="grid gap-3">{(result.data.lesson.lesson_resources ?? []).map((resource: LessonResource) => <li key={resource.id}>
+            <a className="text-sm font-medium text-slate-800 underline" href={`/api/student/resources/${resource.id}`} target="_blank" rel="noopener noreferrer">{resource.resource_type === "external_link" ? "Open link: " : "Download: "}{resource.title}</a>
+          </li>)}</ul> : <p className="text-sm text-slate-500">No resources attached.</p>}
         </section>
         <div className="mt-6 flex justify-between">
           <Button asChild variant="outline"><Link href="/student/courses">Back to courses</Link></Button>

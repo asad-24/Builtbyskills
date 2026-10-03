@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event"
 import { render, screen } from "@/test/utils/render"
 
 vi.mock("@/actions/admin", () => ({
-  createCourseAction: vi.fn(async () => ({ ok: true, message: "Course created." })),
+  createCourseDraftAction: vi.fn(async () => ({ ok: true, message: "Course created." })),
 }))
 
 vi.mock("@/components/admin/thumbnail-upload-input", () => ({
@@ -23,12 +23,14 @@ describe("CreateCourseDialog", () => {
     await user.click(screen.getByRole("button", { name: "Create course" }))
 
     expect(screen.getByRole("dialog", { name: "Create course" })).toBeInTheDocument()
-    expect(screen.getByRole("textbox", { name: "Course title" })).toBeInTheDocument()
-    expect(screen.getByRole("textbox", { name: "Slug" })).toHaveAttribute("placeholder", "shopify-and-tiktok-ads")
-    expect(screen.getByRole("textbox", { name: "Full description" })).toBeInTheDocument()
+    expect(screen.getByRole("textbox", { name: "Course name" })).toBeInTheDocument()
+    expect(screen.queryByRole("textbox", { name: /address/i })).not.toBeInTheDocument()
+    expect(screen.getByText("Additional details (optional)").closest("details")).not.toHaveAttribute("open")
+    await user.click(screen.getByText("Additional details (optional)"))
+    expect(screen.getByRole("textbox", { name: "About this course" })).toBeInTheDocument()
     expect(screen.getByLabelText("Thumbnail")).toHaveAttribute("name", "thumbnail_url")
-    expect(screen.getByRole("combobox", { name: "Status" })).toHaveValue("draft")
-    expect(screen.getByRole("combobox", { name: "Instructor" })).toHaveValue("")
-    expect(screen.getByRole("checkbox", { name: "Featured course" })).toBeInTheDocument()
+    expect(screen.queryByRole("combobox", { name: "Status" })).not.toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "Displayed instructor" })).toHaveValue("")
+    expect(screen.getByRole("combobox", { name: "Show first in course catalog" })).toBeInTheDocument()
   })
 })

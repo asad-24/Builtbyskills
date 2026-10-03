@@ -28,7 +28,11 @@ export default async function AdminPaymentsPage() {
             payment.student?.full_name ?? "Enrollment visitor",
             formatMoney(payment.amount, payment.currency),
             payment.transaction_reference ?? "Not provided",
-            payment.screenshot_path ?? "Not uploaded",
+            payment.screenshot_path ? (
+              <a key={`screenshot-${payment.id}`} href={`/api/admin/payments/${encodeURIComponent(payment.id)}/screenshot`} target="_blank" rel="noopener noreferrer" className="underline">
+                Open screenshot
+              </a>
+            ) : "Not provided",
             <StatusBadge key={payment.id}>{payment.status}</StatusBadge>,
             formatDate(payment.submitted_at),
           ])}

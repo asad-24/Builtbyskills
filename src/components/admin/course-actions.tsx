@@ -3,18 +3,12 @@
 import { useId, useState, type ReactNode } from "react"
 import { Plus, X } from "lucide-react"
 
-import { createCourseAction } from "@/actions/admin"
-import { ActionForm } from "@/components/admin/action-form"
-import { SelectField, TextAreaField, TextField } from "@/components/admin/admin-ui"
-import { ThumbnailUploadInput } from "@/components/admin/thumbnail-upload-input"
+import { deleteCourseAction } from "@/actions/admin"
+import { ConfirmAction } from "@/components/admin/confirm-action"
+import { CourseDetailsForm } from "@/components/admin/course-details-form"
 import { Button } from "@/components/ui/button"
 
 type SelectOption = { value: string; label: string }
-
-const courseStatusOptions = ["draft", "published", "unpublished", "archived"].map((value) => ({
-  value,
-  label: value,
-}))
 
 export function CreateCourseDialog({ instructorOptions }: { instructorOptions: SelectOption[] }) {
   const [open, setOpen] = useState(false)
@@ -27,30 +21,7 @@ export function CreateCourseDialog({ instructorOptions }: { instructorOptions: S
       </Button>
       {open ? (
         <CourseModal title="Create course" onClose={() => setOpen(false)}>
-          <ActionForm action={createCourseAction} submitLabel="Create course">
-            <TextField name="title" label="Course title" required />
-            <TextField name="slug" label="Slug" required placeholder="shopify-and-tiktok-ads" />
-            <TextField name="short_description" label="Short description" required />
-            <TextAreaField name="description" label="Full description" required />
-            <ThumbnailUploadInput name="thumbnail_url" />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <TextField name="category" label="Category" required />
-              <TextField name="level" label="Level" required />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <TextField name="duration_text" label="Duration" />
-              <TextField name="price" label="Price" type="number" required />
-            </div>
-            <TextField name="currency" label="Currency" defaultValue="PKR" required />
-            <SelectField name="status" label="Status" options={courseStatusOptions} />
-            <SelectField name="instructor_id" label="Instructor" options={instructorOptions} />
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-              <input type="checkbox" name="featured" value="true" className="size-4 rounded border-slate-300" />
-              Featured course
-            </label>
-            <TextAreaField name="outcomes" label="Outcomes, one per line" rows={3} />
-            <TextAreaField name="requirements" label="Requirements, one per line" rows={3} />
-          </ActionForm>
+          <CourseDetailsForm instructorOptions={instructorOptions} />
         </CourseModal>
       ) : null}
     </>
@@ -88,4 +59,13 @@ function CourseModal({
       </section>
     </div>
   )
+}
+
+export function DeleteCourse({ id, title }: { id: string; title: string }) {
+  return <ConfirmAction title={`Delete ${title}?`} description="Permanently delete this course? This cannot be undone." action={async (_, data) => {
+    await deleteCourseAction(data)
+    return { ok: true, message: "Course deleted." }
+  }}>
+    <input type="hidden" name="id" value={id} />
+  </ConfirmAction>
 }

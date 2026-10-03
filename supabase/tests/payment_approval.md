@@ -5,6 +5,22 @@ before deploying the updated action. It adds one service-role-only RPC, no table
 columns, enums, data rewrites, or new relationships. Historical migrations and
 Feature 1 remain unchanged.
 
+Also apply `202610020002_payment_password_setup.sql` before using the updated
+approval code. It replaces the RPC without changing tables or existing records.
+Supabase Auth's admin `createUser` generates a random password when no password
+is supplied; a non-empty hash alone does not prove student account setup. New
+payment accounts receive the service-owned `payment_password_setup_required`
+marker. The RPC permits first activation for those accounts only while
+`last_sign_in_at` is null, still subject to the prior-activation receipt guard.
+Existing non-empty-password accounts without that marker are unchanged, even
+if they have never signed in. Password recovery establishes a sign-in session,
+so completed setup is excluded without altering the working recovery flow.
+
+The single payment approval email includes the generated recovery link when
+activation is required. Link-generation failure records failed email status;
+approval replay never sends another email. Already approved historical accounts
+are not rewritten or resent: affected students can use Forgot password.
+
 On a **disposable Supabase database**, after applying repository migrations, run:
 
 ```powershell
@@ -39,7 +55,7 @@ and enrollment. Use separate disposable accounts; do not test against real users
   or expired enrollments require explicit administrative resolution; approval
   never reactivates them. Existing pending enrollment start/expiry dates survive.
 - Auth creation uses the existing confirmed-user pattern and a server-owned
-  `payment_provisioned` marker. If database finalization fails, retry resolves that
+  `payment_provisioned` and `payment_password_setup_required` marker. If database finalization fails, retry resolves that
   Auth user and finalizes the profile/enrollment without another Auth creation.
 - Database finalization is atomic, including its `payment.reviewed` audit receipt.
   An audit insertion failure rolls back that transaction. Auth and email are not

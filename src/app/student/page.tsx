@@ -4,6 +4,8 @@ import { AdminTable, PageHeader, SetupNotice, StatCard, StatusBadge } from "@/co
 import { Button } from "@/components/ui/button"
 import { getStudentDashboardData } from "@/features/student/data"
 import { formatDate } from "@/lib/format"
+import { firstAccessibleLesson } from "@/lib/lessons/discovery"
+import { enrollmentIsActive } from "@/lib/permissions"
 import type { SectionWithLessons } from "@/types/lms"
 
 export const metadata = {
@@ -14,13 +16,15 @@ export default async function StudentDashboardPage() {
   const result = await getStudentDashboardData()
   if (!result.ok) return <SetupNotice message={result.message} />
 
-  const activeEnrollments = result.data.enrollments.filter((item) => item.status === "active")
+  const activeEnrollments = result.data.enrollments.filter(enrollmentIsActive)
   const completed = result.data.progress.filter((item) => item.is_completed).length
   const totalLessons = activeEnrollments.reduce((sum, enrollment) => {
     return sum + (enrollment.course?.course_sections ?? []).reduce((sectionSum: number, section: SectionWithLessons) => sectionSum + (section.lessons?.length ?? 0), 0)
   }, 0)
   const overall = totalLessons > 0 ? Math.round((completed / totalLessons) * 100) : 0
-  const firstLesson = activeEnrollments[0]?.course?.course_sections?.[0]?.lessons?.[0]
+  const firstLesson = activeEnrollments
+    .map(enrollment => firstAccessibleLesson(enrollment, enrollment.course?.course_sections))
+    .find(lesson => lesson !== undefined)
 
   return (
     <>
@@ -38,7 +42,7 @@ export default async function StudentDashboardPage() {
             <Link href={`/student/lessons/${firstLesson.id}`}>Open lesson</Link>
           </Button>
         </div>
-      ) : null}
+      ) : activeEnrollments.length ? <p className="mt-6 text-sm text-slate-600">No published lessons are available yet.</p> : null}
       <section className="mt-6">
         <h2 className="mb-3 font-semibold">Next live class</h2>
         <AdminTable columns={["Title", "Course", "Starts", "Status"]} rows={result.data.liveClasses.slice(0, 1).map((item) => [item.title, item.course?.title ?? "Course", formatDate(item.starts_at), <StatusBadge key={item.id}>{item.status}</StatusBadge>])} />

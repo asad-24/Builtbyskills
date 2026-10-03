@@ -23,6 +23,17 @@ function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.has(path) || path.startsWith("/courses/")
 }
 
+function redirectToLogin(request: NextRequest) {
+  if (request.method === "POST" && request.headers.has("next-action")) {
+    // Fetch actions need an action redirect, rather than an HTTP redirect to HTML.
+    return new NextResponse(null, {
+      status: 200,
+      headers: { "x-action-redirect": "/login;replace" },
+    })
+  }
+  return NextResponse.redirect(new URL("/login", request.url))
+}
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const response = NextResponse.next()
@@ -53,7 +64,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.redirect(new URL("/login", request.url))
+    return redirectToLogin(request)
   }
 
   const { data: profile } = await supabase
@@ -63,15 +74,15 @@ export async function middleware(request: NextRequest) {
     .single()
 
   if (pathname.startsWith("/admin") && profile?.role !== "super_admin") {
-    return NextResponse.redirect(new URL("/login", request.url))
+    return redirectToLogin(request)
   }
 
   if (pathname.startsWith("/instructor") && profile?.role !== "instructor") {
-    return NextResponse.redirect(new URL("/login", request.url))
+    return redirectToLogin(request)
   }
 
   if (pathname.startsWith("/student") && profile?.role !== "student") {
-    return NextResponse.redirect(new URL("/login", request.url))
+    return redirectToLogin(request)
   }
 
   return response

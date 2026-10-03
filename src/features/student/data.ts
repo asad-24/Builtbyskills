@@ -4,7 +4,7 @@ import { AppAuthError, AppForbiddenError, MissingEnvironmentError } from "@/lib/
 import { requireRole } from "@/lib/auth/session"
 import { enrollmentIsActive } from "@/lib/permissions"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
-import type { AppResult } from "@/types/lms"
+import type { AppResult, SectionWithLessons } from "@/types/lms"
 
 function appError(error: unknown): AppResult<never> {
   if (error instanceof MissingEnvironmentError) {
@@ -37,6 +37,11 @@ export async function getStudentDashboardData() {
     const authorizedCourseIds = [...new Set(
       (enrollments.data ?? []).filter(enrollmentIsActive).map((enrollment) => enrollment.course_id as string)
     )]
+    // Curriculum publication protection only; enrollment history, payment,
+    // live class and announcement behavior stays unchanged.
+    const publishedCurriculumIds = [...new Set((enrollments.data ?? [])
+      .filter(enrollment => enrollmentIsActive(enrollment) && enrollment.course?.status === "published")
+      .map(enrollment => enrollment.course_id as string))]
     const announcementQuery = supabase
       .from("announcements")
       .select("*, course:courses(title)")
@@ -56,10 +61,10 @@ export async function getStudentDashboardData() {
       scopedAnnouncements
         .order("published_at", { ascending: false })
         .limit(10),
-      authorizedCourseIds.length ? supabase
+      publishedCurriculumIds.length ? supabase
         .from("course_sections")
         .select("*, lessons(*)")
-        .in("course_id", authorizedCourseIds) : { data: [], error: null },
+        .in("course_id", publishedCurriculumIds) : { data: [], error: null },
     ])
 
     const failed = [liveClasses, announcements, sections].find((result) => result.error)
@@ -73,7 +78,10 @@ export async function getStudentDashboardData() {
           ...enrollment,
           course: enrollment.course ? {
             ...enrollment.course,
-            course_sections: (sections.data ?? []).filter((section) => section.course_id === enrollment.course_id),
+            course_sections: (sections.data ?? []).filter((section) => section.course_id === enrollment.course_id)
+              .sort((a, b) => a.position - b.position).map((section: SectionWithLessons) => ({
+                ...section, lessons: (section.lessons ?? []).filter(lesson => lesson.status === "published").sort((a, b) => a.position - b.position),
+              })),
           } : null,
         })),
         progress: progress.data ?? [],

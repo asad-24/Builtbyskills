@@ -1,62 +1,28 @@
 import "server-only"
-
-import { AppAuthError, AppForbiddenError, MissingEnvironmentError } from "@/lib/errors"
-import { requireRole } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
-import { enrollmentIsActive } from "@/lib/permissions"
-import type { AppResult } from "@/types/lms"
-
-function appError(error: unknown): AppResult<never> {
-  if (error instanceof MissingEnvironmentError) {
-    return { ok: false, reason: "missing_env", message: `Configure ${error.keys.join(", ")} to connect Supabase.` }
-  }
-  if (error instanceof AppAuthError) return { ok: false, reason: "unauthorized", message: error.message }
-  if (error instanceof AppForbiddenError) return { ok: false, reason: "forbidden", message: error.message }
-  return { ok: false, reason: "error", message: error instanceof Error ? error.message : "Unable to load lesson." }
-}
+import { AppAuthError, AppForbiddenError } from "@/lib/errors"
+import { requireStudentLesson } from "@/lib/lessons/access"
+import type { AppResult, CourseWithCurriculum, LessonWithResources } from "@/types/lms"
 
 export async function getStudentLessonData(lessonId: string) {
   try {
-    const profile = await requireRole(["student"])
-    const supabase = createSupabaseAdminClient()
-    const { data: lesson, error: lessonError } = await supabase
-      .from("lessons")
-      .select("*, lesson_resources(*), section:course_sections(*, course:courses(*, course_sections(*, lessons(*))))")
-      .eq("id", lessonId)
-      .single()
-
-    if (lessonError || !lesson) throw lessonError ?? new Error("Lesson not found.")
-
-    const courseId = lesson.section?.course_id
-    const { data: enrollment, error: enrollmentError } = await supabase
-      .from("enrollments")
-      .select("*")
-      .eq("student_id", profile.id)
-      .eq("course_id", courseId)
-      .single()
-
-    if (enrollmentError || !enrollment || !enrollmentIsActive(enrollment)) {
-      throw new AppForbiddenError("This lesson is not available for your account.")
-    }
-
-    const { data: progress } = await supabase
-      .from("lesson_progress")
-      .select("*")
-      .eq("student_id", profile.id)
-      .eq("lesson_id", lesson.id)
-      .maybeSingle()
-
-    return {
-      ok: true as const,
-      data: {
-        profile,
-        lesson,
-        course: lesson.section.course,
-        enrollment,
-        progress,
-      },
-    }
+    const { profile, supabase, lesson, enrollment, courseId } = await requireStudentLesson(lessonId)
+    const [courseResult, resources, progress] = await Promise.all([
+      supabase.from("courses").select("*, course_sections(*, lessons(*))").eq("id", courseId).single(),
+      supabase.from("lesson_resources").select("*").eq("lesson_id", lessonId).order("position"),
+      supabase.from("lesson_progress").select("*").eq("student_id", profile.id).eq("lesson_id", lessonId).maybeSingle(),
+    ])
+    if (courseResult.error || !courseResult.data || resources.error || progress.error) throw new Error("Unable to load lesson")
+    if (courseResult.data.status !== "published") throw new AppForbiddenError()
+    const course = courseResult.data as CourseWithCurriculum
+    course.course_sections = (course.course_sections ?? []).sort((a, b) => a.position - b.position).map(section => ({
+      ...section, lessons: (section.lessons ?? []).filter(item => item.status === "published").sort((a, b) => a.position - b.position),
+    }))
+    return { ok: true as const, data: {
+      profile, lesson: { ...lesson, lesson_resources: resources.data ?? [] } as LessonWithResources,
+      course, enrollment, progress: progress.data,
+    } }
   } catch (error) {
-    return appError(error)
+    const reason = error instanceof AppAuthError ? "unauthorized" : error instanceof AppForbiddenError ? "forbidden" : "error"
+    return { ok: false, reason, message: reason === "error" ? "We could not load this lesson. Please try again." : "This lesson is not available for your account." } as AppResult<never>
   }
 }

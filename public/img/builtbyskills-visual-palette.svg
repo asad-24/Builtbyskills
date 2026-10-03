@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="brand-palette" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <!-- Neutral surfaces: #02062C shadows through white highlights. -->
+      <feColorMatrix in="SourceGraphic" type="saturate" values="0" result="neutral" />
+      <feComponentTransfer in="neutral" result="navy">
+        <feFuncR type="linear" slope="0.992157" intercept="0.007843" />
+        <feFuncG type="linear" slope="0.976471" intercept="0.023529" />
+        <feFuncB type="linear" slope="0.827451" intercept="0.172549" />
+      </feComponentTransfer>
+      <!-- Isolate the artwork's green/yellow accents without tinting neutral details. -->
+      <feColorMatrix in="SourceGraphic" type="matrix" values="
+        0 0 0 0 0
+        0 0 0 0 0
+        0 0 0 0 0
+        0 2 -2 0 -0.12" result="accent-mask" />
+      <!-- #FDBE01, retaining the original accent brightness and shading. -->
+      <feColorMatrix in="SourceGraphic" type="matrix" values="
+        0 0.992157 0 0 0
+        0 0.745098 0 0 0
+        0 0.003922 0 0 0
+        0 0 0 1 0" result="gold" />
+      <feComposite in="gold" in2="accent-mask" operator="in" result="gold-accent" />
+      <feComposite in="navy" in2="accent-mask" operator="out" result="navy-surface" />
+      <feComposite in="gold-accent" in2="navy-surface" operator="arithmetic" k2="1" k3="1" />
+    </filter>
+  </defs>
+</svg>

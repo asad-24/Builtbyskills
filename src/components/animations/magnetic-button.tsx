@@ -22,12 +22,12 @@ type MagneticButtonProps = PropsWithChildren<
 
 const tones = {
   accent:
-    "bg-[#b8ff3d] text-[#080808] border-[#b8ff3d] hover:bg-[#d7ff86] hover:border-[#d7ff86]",
-  dark: "bg-[#080808] text-[#f7f7f2] border-[#080808] hover:bg-[#1a1a1a]",
+    "bg-[var(--bbs-yellow,#b8ff3d)] text-[var(--bbs-navy,#080808)] border-[var(--bbs-yellow,#b8ff3d)] hover:bg-[var(--bbs-yellow-hover,#d7ff86)] hover:border-[var(--bbs-yellow-hover,#d7ff86)]",
+  dark: "bg-[var(--bbs-navy,#080808)] text-[var(--bbs-white,#f7f7f2)] border-[var(--bbs-navy,#080808)] hover:bg-[var(--bbs-navy-hover,#1a1a1a)]",
   light:
-    "bg-[#f7f7f2] text-[#080808] border-[#f7f7f2] hover:bg-white hover:border-white",
+    "bg-[var(--bbs-white,#f7f7f2)] text-[var(--bbs-navy,#080808)] border-[var(--bbs-white,#f7f7f2)] hover:bg-white hover:border-white",
   outline:
-    "bg-transparent text-current border-current/25 hover:border-[#b8ff3d] hover:text-[#b8ff3d]",
+    "bg-transparent text-current border-current/25 hover:border-[var(--bbs-yellow,#b8ff3d)] hover:text-[var(--bbs-yellow,#b8ff3d)]",
 }
 
 export function MagneticButton({
@@ -40,6 +40,7 @@ export function MagneticButton({
   onMouseLeave,
   ...props
 }: MagneticButtonProps) {
+  const LinkComponent = href.startsWith("#") ? "a" : Link
   const linkRef = useRef<HTMLAnchorElement>(null)
   const reducedMotion = useReducedMotion()
 
@@ -63,11 +64,11 @@ export function MagneticButton({
   }
 
   return (
-    <Link
+    <LinkComponent
       ref={linkRef}
       href={href}
       className={cn(
-        "group/magnetic relative inline-flex min-h-12 items-center justify-center gap-3 overflow-hidden rounded-full border px-5 text-sm font-bold uppercase transition-[background,border-color,color,transform] duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8ff3d] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080808] sm:px-6",
+        "group/magnetic relative inline-flex min-h-12 items-center justify-center gap-3 overflow-hidden rounded-full border px-5 text-sm font-bold uppercase transition-[background,border-color,color,transform] duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bbs-yellow,#b8ff3d)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bbs-navy,#080808)] sm:px-6",
         tones[tone],
         className
       )}
@@ -79,6 +80,6 @@ export function MagneticButton({
       {showArrow ? (
         <ArrowUpRight className="relative z-10 size-4 transition-transform duration-300 group-hover/magnetic:translate-x-1 group-hover/magnetic:-translate-y-1" />
       ) : null}
-    </Link>
+    </LinkComponent>
   )
 }

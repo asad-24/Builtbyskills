@@ -61,6 +61,7 @@ export type Course = {
 }
 
 export type CourseSection = {
+  updated_at?: string
   id: string
   course_id: string
   title: string
@@ -70,6 +71,13 @@ export type CourseSection = {
 }
 
 export type Lesson = {
+  video_asset_id?: string | null
+  video_source?: "r2" | "legacy_youtube"
+  video_upload?: { id: string; state: string; name: string }
+  youtube_video_id?: string | null
+  // Retired metadata retained for historical records; never used for playback.
+  updated_at?: string
+  mux_upload_id?: string | null
   id: string
   section_id: string
   title: string
@@ -98,7 +106,7 @@ export type LessonWithResources = Lesson & {
   lesson_resources?: LessonResource[]
 }
 
-export type SectionWithLessons = CourseSection & {
+export type SectionWithLessons = Omit<CourseSection, "lessons"> & {
   lessons?: LessonWithResources[]
 }
 

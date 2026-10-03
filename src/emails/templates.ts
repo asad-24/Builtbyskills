@@ -46,10 +46,10 @@ export const emailTemplates = {
       "Payment needs another review",
       `<p>Hi ${escapeHtml(name ?? "there")}, your payment submission was rejected.</p><p><strong>Reason:</strong> ${escapeHtml(reason ?? "Please upload a clearer or correct screenshot.")}</p>`
     ),
-  paymentApproved: ({ name, courseTitle }: TemplateInput) =>
+  paymentApproved: ({ name, courseTitle, actionUrl }: TemplateInput) =>
     shell(
       "Payment approved and enrollment confirmed",
-      `<p>Hi ${escapeHtml(name ?? "there")}, your payment for <strong>${escapeHtml(courseTitle ?? "your selected course")}</strong> has been approved.</p><p>Your enrollment is now confirmed. If you already have an account, you can sign in directly. If you were invited by email, use the account activation link from your invitation email to set your password and access your course.</p>`
+      `<p>Hi ${escapeHtml(name ?? "there")}, your payment for <strong>${escapeHtml(courseTitle ?? "your selected course")}</strong> has been approved.</p><p>Your enrollment is now confirmed.</p>${actionUrl ? `<p>Set your password to access your Student Dashboard and course.</p><p><a href="${escapeHtml(actionUrl)}" style="color:#3f6212;font-weight:700;">Set your password</a></p>` : "<p>Sign in with your existing account to access your Student Dashboard and course.</p>"}`
     ),
   accountActivation: ({ name, actionUrl }: TemplateInput) =>
     shell(

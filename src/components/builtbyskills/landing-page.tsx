@@ -152,7 +152,7 @@ const fallbackCourses: Course[] = [
 const navLinks = [
   { href: "#home", label: "Home" },
   { href: "#why", label: "Why Builtbyskills" },
-  { href: "#skills", label: "Skills" },
+  { href: "/courses", label: "Skills" },
   { href: "#mentorship", label: "Mentorship" },
   { href: "#about", label: "About" },
   { href: "/contact", label: "Contact" },
@@ -567,7 +567,7 @@ export function BuiltBySkillsLandingPage() {
     fallbackCourses[0]
 
   return (
-    <div ref={pageRef} className="bg-[#080808] text-[#f7f7f2]">
+    <div ref={pageRef} className="bbs-theme bg-[#02062C] text-[#FFFFFF]">
       <Header
         menuOpen={menuOpen}
         scrolled={scrolled}
@@ -575,15 +575,15 @@ export function BuiltBySkillsLandingPage() {
       />
       <main>
         <Hero />
-        <ProblemSection />
-        <SkillsMarquee />
-        <SolutionSection />
         <SkillsSection
           courses={displayCourses}
           selectedCourse={selectedCourse}
           selectedTrack={selectedTrack}
           setSelectedTrack={setSelectedTrack}
         />
+        <ProblemSection />
+        <SkillsMarquee />
+        <SolutionSection />
         <JourneySection />
         <TrustSection />
         <PlatformStrip />
@@ -616,15 +616,15 @@ function Header({
         className={cn(
           "mx-auto flex max-w-[1500px] items-center justify-between rounded-full border border-transparent px-4 py-3 transition-all duration-500",
           scrolled &&
-            "border-white/10 bg-[#080808]/78 shadow-2xl shadow-black/20 backdrop-blur-xl"
+            "border-white/10 bg-[#02062C]/78 shadow-2xl shadow-black/20 backdrop-blur-xl"
         )}
       >
         <Link
           href="#home"
-          className="group flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8ff3d]"
+          className="group flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBE01]"
           aria-label="Builtbyskills home"
         >
-          <span className="relative grid size-10 overflow-hidden rounded-full bg-[#b8ff3d] transition-transform duration-300 group-hover:scale-105">
+          <span className="relative grid size-10 overflow-hidden rounded-full bg-[#FDBE01] transition-transform duration-300 group-hover:scale-105">
             <Image
               src="/img/BBS%20LOGO%20A.jpg.jpeg"
               alt=""
@@ -633,7 +633,7 @@ function Header({
               className="object-cover"
             />
           </span>
-          <span className="text-base font-black uppercase text-[#f7f7f2]">
+          <span className="text-base font-black uppercase text-[#FFFFFF]">
             Builtbyskills
           </span>
         </Link>
@@ -643,15 +643,18 @@ function Header({
             <Link
               key={link.href}
               href={link.href}
-              className="group relative text-sm font-semibold text-white/72 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8ff3d]"
+              className="group relative text-sm font-semibold text-white/72 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBE01]"
             >
               {link.label}
-              <span className="absolute -bottom-2 left-0 h-px w-full origin-left scale-x-0 bg-[#b8ff3d] transition-transform duration-300 group-hover:scale-x-100" />
+              <span className="absolute -bottom-2 left-0 h-px w-full origin-left scale-x-0 bg-[#FDBE01] transition-transform duration-300 group-hover:scale-x-100" />
             </Link>
           ))}
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
+          <MagneticButton href="/login" tone="outline" showArrow={false} className="min-h-10 px-5 text-white">
+            Login
+          </MagneticButton>
           <MagneticButton href="/enroll" className="min-h-10 px-5">
             Join Now
           </MagneticButton>
@@ -659,7 +662,7 @@ function Header({
 
         <button
           type="button"
-          className="grid size-11 place-items-center rounded-full border border-white/15 text-white transition-colors hover:border-[#b8ff3d] hover:text-[#b8ff3d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8ff3d] lg:hidden"
+          className="grid size-11 place-items-center rounded-full border border-white/15 text-white transition-colors hover:border-[#FDBE01] hover:text-[#FDBE01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBE01] lg:hidden"
           aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen(!menuOpen)}
@@ -670,7 +673,7 @@ function Header({
 
       <div
         className={cn(
-          "fixed inset-x-4 top-20 z-40 origin-top rounded-3xl border border-white/10 bg-[#080808]/95 p-6 shadow-2xl shadow-black/50 backdrop-blur-xl transition-all duration-300 lg:hidden",
+          "fixed inset-x-4 top-20 z-40 origin-top rounded-3xl border border-white/10 bg-[#02062C]/95 p-6 shadow-2xl shadow-black/50 backdrop-blur-xl transition-all duration-300 lg:hidden",
           menuOpen
             ? "translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-4 opacity-0"
@@ -681,19 +684,30 @@ function Header({
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-2xl px-4 py-3 text-xl font-bold text-white transition-colors hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8ff3d]"
+              className="rounded-2xl px-4 py-3 text-xl font-bold text-white transition-colors hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBE01]"
               onClick={() => setMenuOpen(false)}
             >
               {link.label}
             </Link>
           ))}
-          <MagneticButton
-            href="/enroll"
-            className="mt-4 w-full"
-            onClick={() => setMenuOpen(false)}
-          >
-            Join Now
-          </MagneticButton>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <MagneticButton
+              href="/login"
+              tone="outline"
+              showArrow={false}
+              className="w-full text-white"
+              onClick={() => setMenuOpen(false)}
+            >
+              Login
+            </MagneticButton>
+            <MagneticButton
+              href="/enroll"
+              className="w-full gap-2 px-3"
+              onClick={() => setMenuOpen(false)}
+            >
+              Join Now
+            </MagneticButton>
+          </div>
         </nav>
       </div>
     </header>
@@ -702,7 +716,7 @@ function Header({
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <p className="mb-5 inline-flex items-center gap-2 text-xs font-black uppercase text-[#111111] dark:text-[#b8ff3d]">
+    <p className="mb-5 inline-flex items-center gap-2 text-xs font-black uppercase text-[#02062C] dark:text-[#FDBE01]">
       <span className="h-px w-9 bg-current" />
       {children}
     </p>
@@ -713,19 +727,19 @@ function Hero() {
   return (
     <section
       id="home"
-      className="hero-section relative flex min-h-screen overflow-hidden bg-[#080808] px-0 pt-28 sm:pt-32"
+      className="hero-section relative flex min-h-0 md:min-h-screen overflow-hidden bg-[#02062C] px-0 pt-26 sm:pt-28 lg:pt-24"
     >
       <div className="absolute inset-0 hero-grid opacity-70" />
-      <div className="hero-accent-line absolute inset-y-[-18%] right-[12%] hidden w-10 origin-bottom rotate-45 bg-[#b8ff3d]/12 lg:block" />
-      <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#080808] to-transparent" />
-      <div className="mx-auto grid w-full max-w-[1500px] items-end gap-10 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1.32fr)_minmax(330px,0.68fr)] lg:px-8 xl:px-0">
+      <div className="hero-accent-line absolute inset-y-[-18%] right-[12%] hidden w-10 origin-bottom rotate-45 bg-[#FDBE01]/12 lg:block" />
+      <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#02062C] to-transparent" />
+      <div className="mx-auto grid w-full max-w-[1500px] items-end lg:items-center gap-10 px-4 pb-12 lg:pb-8 sm:px-6 lg:grid-cols-[minmax(0,1.32fr)_minmax(330px,0.68fr)] lg:px-8 xl:px-0">
         <div className="relative z-10">
-          <p className="hero-eyebrow mb-6 inline-flex items-center gap-3 rounded-full border border-[#b8ff3d]/30 bg-[#b8ff3d]/8 px-4 py-2 text-xs font-black uppercase text-[#b8ff3d]">
+          <p className="hero-eyebrow mb-4 sm:mb-6 lg:mb-4 inline-flex items-center gap-3 rounded-full border border-[#FDBE01]/30 bg-[#FDBE01]/8 px-4 py-2 text-xs font-black uppercase text-[#FDBE01]">
             <Sparkles className="size-4" />
             LEARN. PRACTICE. EARN.
           </p>
 
-          <h1 className="hero-heading-wrap max-w-[780px] text-4xl font-black uppercase leading-[0.93] text-[#f7f7f2] sm:text-5xl md:text-6xl xl:text-[4.35rem] 2xl:text-[4.7rem]">
+          <h1 className="hero-heading-wrap max-w-[780px] text-4xl font-black uppercase leading-[0.93] text-[#FFFFFF] sm:text-5xl md:text-6xl xl:text-[4rem] 2xl:text-[4.7rem]">
             <span className="hero-line block overflow-hidden">
               <span>Learn a Skill</span>
             </span>
@@ -738,35 +752,35 @@ function Hero() {
             <span className="hero-line block overflow-hidden">
               <span>Pays</span>
             </span>
-            <span className="hero-line block overflow-hidden text-[#b8ff3d]">
+            <span className="hero-line block overflow-hidden text-[#FDBE01]">
               <span>With Builtbyskills</span>
             </span>
           </h1>
 
-          <p className="hero-copy mt-7 max-w-2xl text-base leading-7 text-white/72 sm:text-lg">
+          <p className="hero-copy mt-4 sm:mt-7 lg:mt-4 max-w-2xl text-base leading-7 text-white/72 sm:text-lg">
             Practical training in Digital Marketing, Shopify, Amazon, eBay,
             Graphic
             Designing — where you don&apos;t just get lectures, you get a real
             path to earning.
           </p>
 
-          <div className="hero-actions mt-9 flex flex-col gap-3 sm:flex-row">
-            <MagneticButton href="/enroll" className="min-h-14 px-7">
+          <div className="hero-actions mt-3 sm:mt-9 lg:mt-5 grid grid-cols-[1.35fr_1fr] gap-2 sm:flex sm:flex-row sm:gap-3">
+            <MagneticButton href="/enroll" className="min-h-14 gap-2 px-3 text-xs leading-4 sm:gap-3 sm:px-6 sm:text-sm sm:leading-5">
               Select Your Platform — Join Now
             </MagneticButton>
-            <MagneticButton href="#skills" tone="outline" className="min-h-14 px-7">
+            <MagneticButton href="#skills" tone="outline" className="min-h-14 gap-2 px-3 text-xs leading-4 sm:gap-3 sm:px-6 sm:text-sm sm:leading-5">
               Explore Skills
             </MagneticButton>
           </div>
 
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8 lg:mt-6 flex flex-wrap gap-3">
             {["Live Classes", "Real Mentorship", "Free Fiverr Guidance"].map(
               (item) => (
                 <span
                   key={item}
                   className="hero-trust inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/72"
                 >
-                  <Check className="size-4 text-[#b8ff3d]" />
+                  <Check className="size-4 text-[#FDBE01]" />
                   {item}
                 </span>
               )
@@ -774,8 +788,8 @@ function Hero() {
           </div>
         </div>
 
-        <div className="hero-visual relative z-10 mx-auto w-full max-w-[390px] pb-10 lg:translate-y-2">
-          <div className="hero-visual-card relative aspect-[0.86] overflow-hidden rounded-[1.7rem] border border-white/12 bg-[#111111] shadow-2xl shadow-[#b8ff3d]/10">
+        <div className="hero-visual relative z-10 mx-auto hidden md:block w-full max-w-[390px] pb-10 lg:-top-6 lg:translate-y-2">
+          <div className="hero-visual-card relative aspect-[0.86] overflow-hidden rounded-[1.7rem] border border-white/12 bg-[#02062C] shadow-2xl shadow-[#FDBE01]/10">
             <Image
               src="/img/builtbyskills-hero.png"
               alt="Abstract dashboard showing learning, ecommerce, ads, and client work"
@@ -783,15 +797,16 @@ function Hero() {
               priority
               sizes="(min-width: 1024px) 420px, 92vw"
               className="object-cover"
+              style={{ filter: "url('/img/builtbyskills-visual-palette.svg#brand-palette')" }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#080808]/88 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#02062C]/88 via-transparent to-transparent" />
           </div>
           {["Digital Marketing", "Shopify", "Amazon", "eBay", "Design"].map(
             (label, index) => (
               <span
                 key={label}
                 className={cn(
-                  "hero-chip absolute rounded-full border border-white/14 bg-[#080808]/88 px-4 py-2 text-[0.68rem] font-black uppercase text-white shadow-xl backdrop-blur",
+                  "hero-chip absolute rounded-full border border-white/14 bg-[#02062C]/88 px-4 py-2 text-[0.68rem] font-black uppercase text-white shadow-xl backdrop-blur",
                   index === 0 && "left-2 top-14",
                   index === 1 && "right-0 top-24",
                   index === 2 && "-left-3 bottom-32",
@@ -808,9 +823,9 @@ function Hero() {
       </div>
 
       <Link
-        href="#why"
+        href="#skills"
         aria-label="Scroll to next section"
-        className="absolute bottom-7 left-1/2 hidden -translate-x-1/2 rounded-full border border-white/15 p-3 text-white/70 transition-colors hover:border-[#b8ff3d] hover:text-[#b8ff3d] md:block"
+        className="absolute bottom-7 left-1/2 hidden -translate-x-1/2 rounded-full border border-white/15 p-3 text-white/70 transition-colors hover:border-[#FDBE01] hover:text-[#FDBE01] md:block"
       >
         <ArrowDown className="size-5" />
       </Link>
@@ -822,7 +837,7 @@ function ProblemSection() {
   return (
     <section
       id="why"
-      className="relative overflow-hidden bg-[#f7f7f2] px-4 py-24 text-[#111111] sm:px-6 lg:px-8 lg:py-32"
+      className="relative overflow-hidden bg-[#FFFFFF] px-4 py-24 text-[#02062C] sm:px-6 lg:px-8 lg:py-32"
     >
       <div className="mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[0.75fr_1.25fr]">
         <div className="lg:sticky lg:top-28 lg:h-fit" data-reveal>
@@ -844,9 +859,9 @@ function ProblemSection() {
               className="problem-row group relative overflow-hidden py-8 sm:py-10"
               data-reveal
             >
-              <span className="problem-line absolute left-0 top-0 h-px w-full origin-left bg-[#111111]/18" />
+              <span className="problem-line absolute left-0 top-0 h-px w-full origin-left bg-[#02062C]/18" />
               <div className="grid gap-5 sm:grid-cols-[120px_1fr_40px] sm:items-center">
-                <span className="text-5xl font-black text-[#111111]/18 transition-colors duration-300 group-hover:text-[#b8ff3d]">
+                <span className="text-5xl font-black text-[#02062C]/18 transition-colors duration-300 group-hover:text-[#FDBE01]">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <h3 className="max-w-2xl text-2xl font-black leading-tight transition-transform duration-300 group-hover:translate-x-3 sm:text-3xl">
@@ -865,7 +880,7 @@ function ProblemSection() {
 function SkillsMarquee() {
   return (
     <section
-      className="overflow-hidden border-y border-white/10 bg-[#080808] py-8"
+      className="overflow-hidden border-y border-white/10 bg-[#02062C] py-8"
       aria-label="Skills marquee"
     >
       <div className="marquee-track flex w-max gap-8 text-5xl font-black uppercase leading-none text-transparent [-webkit-text-stroke:1px_rgba(247,247,242,0.34)] sm:text-6xl lg:text-7xl">
@@ -883,19 +898,19 @@ function SolutionSection() {
   return (
     <section
       id="about"
-      className="solution-section relative overflow-hidden bg-[#080808] px-4 py-20 text-[#f7f7f2] sm:px-6 lg:px-8 lg:py-28"
+      className="solution-section relative overflow-hidden bg-[#02062C] px-4 py-20 text-[#FFFFFF] sm:px-6 lg:px-8 lg:py-28"
     >
       <div className="absolute inset-0 hero-grid opacity-30" />
-      <span className="solution-orbit absolute -right-28 top-20 hidden size-96 rounded-full border border-[#b8ff3d]/12 lg:block" />
+      <span className="solution-orbit absolute -right-28 top-20 hidden size-96 rounded-full border border-[#FDBE01]/12 lg:block" />
       <div className="relative mx-auto grid max-w-[1500px] gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
         <div className="solution-sticky h-fit" data-reveal>
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#b8ff3d]/20 bg-[#b8ff3d]/8 px-4 py-2 text-[0.68rem] font-black uppercase text-[#b8ff3d]">
+          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#FDBE01]/20 bg-[#FDBE01]/8 px-4 py-2 text-[0.68rem] font-black uppercase text-[#FDBE01]">
             <span className="h-px w-9 bg-current" />
             THE BUILTBYskills SYSTEM
           </p>
           <h2 className="max-w-2xl text-3xl font-black uppercase leading-[0.98] sm:text-4xl lg:text-5xl">
             What Does Builtbyskills{" "}
-            <span className="text-[#b8ff3d]">Offer?</span>
+            <span className="text-[#FDBE01]">Offer?</span>
           </h2>
           <p className="mt-6 max-w-xl text-base leading-7 text-white/68 sm:text-[1.05rem]">
             A complete system that takes you from zero to landing clients —
@@ -921,9 +936,9 @@ function SolutionSection() {
               sizes="(min-width: 1024px) 690px, 92vw"
               className="object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#080808]/82 via-transparent to-transparent" />
-            <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-white/10 bg-[#080808]/72 p-4 backdrop-blur-md">
-              <p className="text-xs font-black uppercase text-[#b8ff3d]">
+            <div className="absolute inset-0 bg-gradient-to-t from-[#02062C]/82 via-transparent to-transparent" />
+            <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-white/10 bg-[#02062C]/72 p-4 backdrop-blur-md">
+              <p className="text-xs font-black uppercase text-[#FDBE01]">
                 Learn → Practice → Earn
               </p>
               <p className="mt-1 text-sm leading-6 text-white/70">
@@ -941,15 +956,15 @@ function SolutionSection() {
             return (
               <article
                 key={pillar.title}
-                className="pillar-card group relative min-h-[210px] overflow-hidden rounded-[1.15rem] border border-white/10 bg-white/[0.045] p-5 opacity-0 transition-all duration-300 hover:-translate-y-1 hover:border-[#b8ff3d]/60 hover:bg-white/[0.075] sm:p-6"
+                className="pillar-card group relative min-h-[210px] overflow-hidden rounded-[1.15rem] border border-white/10 bg-white/[0.045] p-5 opacity-0 transition-all duration-300 hover:-translate-y-1 hover:border-[#FDBE01]/60 hover:bg-white/[0.075] sm:p-6"
                 data-stagger-item
               >
-                <span className="absolute inset-x-0 top-0 h-px origin-left scale-x-0 bg-[#b8ff3d] transition-transform duration-500 group-hover:scale-x-100" />
+                <span className="absolute inset-x-0 top-0 h-px origin-left scale-x-0 bg-[#FDBE01] transition-transform duration-500 group-hover:scale-x-100" />
                 <div className="flex items-start justify-between gap-6">
-                  <span className="text-3xl font-black text-white/16 transition-colors duration-300 group-hover:text-[#b8ff3d]">
+                  <span className="text-3xl font-black text-white/16 transition-colors duration-300 group-hover:text-[#FDBE01]">
                     {pillar.number}
                   </span>
-                  <span className="grid size-11 place-items-center rounded-full border border-[#b8ff3d]/30 bg-[#b8ff3d]/10 text-[#b8ff3d] transition-transform duration-300 group-hover:rotate-6 group-hover:bg-[#b8ff3d] group-hover:text-[#080808]">
+                  <span className="grid size-11 place-items-center rounded-full border border-[#FDBE01]/30 bg-[#FDBE01]/10 text-[#FDBE01] transition-transform duration-300 group-hover:rotate-6 group-hover:bg-[#FDBE01] group-hover:text-[#02062C]">
                     <Icon className="size-5" />
                   </span>
                 </div>
@@ -982,7 +997,7 @@ function SkillsSection({
   return (
     <section
       id="skills"
-      className="relative overflow-hidden bg-[#f7f7f2] px-4 py-24 text-[#111111] sm:px-6 lg:px-8 lg:py-32"
+      className="relative overflow-hidden bg-[#FFFFFF] px-4 py-24 text-[#02062C] sm:px-6 lg:px-8 lg:py-32"
     >
       <div className="mx-auto max-w-[1500px]">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
@@ -999,10 +1014,10 @@ function SkillsSection({
                   key={course.id}
                   type="button"
                   className={cn(
-                    "rounded-full border px-4 py-2 text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111111]",
+                    "rounded-full border px-4 py-2 text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#02062C]",
                     selectedTrack === course.id
-                      ? "border-[#111111] bg-[#111111] text-[#b8ff3d]"
-                      : "border-[#111111]/15 text-[#111111]/66 hover:border-[#b8ff3d] hover:text-[#111111]"
+                      ? "border-[#02062C] bg-[#02062C] text-[#FDBE01]"
+                      : "border-[#02062C]/15 text-[#02062C]/66 hover:border-[#FDBE01] hover:text-[#02062C]"
                   )}
                   onClick={() => setSelectedTrack(course.id)}
                 >
@@ -1018,25 +1033,6 @@ function SkillsSection({
             >
               Join {selectedCourse.title} Track
             </MagneticButton>
-          </div>
-        </div>
-
-        <div className="relative mt-12 aspect-[2.2] min-h-[260px] overflow-hidden rounded-[1.5rem] border border-[#111111]/12 bg-[#111111]" data-reveal>
-          <Image
-            src="/img/builtbyskills-tracks.png"
-            alt="AI visual showing multiple digital skill tracks as abstract dashboards"
-            fill
-            sizes="(min-width: 1024px) 1500px, 100vw"
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#111111]/84 via-[#111111]/20 to-transparent" />
-          <div className="absolute bottom-6 left-6 max-w-md text-[#f7f7f2]">
-            <p className="text-xs font-black uppercase text-[#b8ff3d]">
-              Practical track selection
-            </p>
-            <p className="mt-2 text-2xl font-black uppercase leading-tight sm:text-3xl">
-              Pick one direction and build client-ready proof.
-            </p>
           </div>
         </div>
 
@@ -1094,10 +1090,10 @@ function CourseCard({
       ref={cardRef}
       data-stagger-item
       className={cn(
-        "group relative flex min-h-[310px] flex-col justify-between overflow-hidden rounded-[1.4rem] border bg-[#111111] p-6 text-[#f7f7f2] opacity-0 transition-[border-color,box-shadow,transform] duration-300 sm:p-7",
+        "group relative flex min-h-[310px] flex-col justify-between overflow-hidden rounded-[1.4rem] border bg-[#02062C] p-6 text-[#FFFFFF] opacity-0 transition-[border-color,box-shadow,transform] duration-300 sm:p-7",
         selected
-          ? "border-[#b8ff3d] shadow-2xl shadow-[#b8ff3d]/15"
-          : "border-white/10 hover:border-[#b8ff3d]/60",
+          ? "border-[#FDBE01] shadow-2xl shadow-[#FDBE01]/15"
+          : "border-white/10 hover:border-[#FDBE01]/60",
         course.className
       )}
       onMouseLeave={handleMouseLeave}
@@ -1111,13 +1107,13 @@ function CourseCard({
           sizes="(min-width: 1024px) 42vw, (min-width: 768px) 50vw, 100vw"
           className="object-cover opacity-[0.72] transition-transform duration-700 ease-out group-hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#080808]/30 via-[#080808]/46 to-[#080808]/96" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#080808]/88 via-[#080808]/42 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#02062C]/30 via-[#02062C]/46 to-[#02062C]/96" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#02062C]/88 via-[#02062C]/42 to-transparent" />
       </div>
       <div className="absolute inset-0 course-card-lines opacity-32 mix-blend-screen" />
       <div className="relative z-10 flex items-center justify-between">
         <span className="text-sm font-black text-white/42">{course.number}</span>
-        <span className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/8 text-[#b8ff3d] transition-transform duration-300 group-hover:rotate-6">
+        <span className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/8 text-[#FDBE01] transition-transform duration-300 group-hover:rotate-6">
           <Icon className="size-5" />
         </span>
       </div>
@@ -1132,14 +1128,14 @@ function CourseCard({
           <button
             type="button"
             onClick={onSelect}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/14 px-4 text-sm font-bold text-white transition-colors hover:border-[#b8ff3d] hover:text-[#b8ff3d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8ff3d]"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/14 px-4 text-sm font-bold text-white transition-colors hover:border-[#FDBE01] hover:text-[#FDBE01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBE01]"
           >
             {selected ? "Selected" : "Learn More"}
             <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
           </button>
           <Link
             href="/enroll"
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#b8ff3d] px-4 text-sm font-black text-[#080808] transition-colors hover:bg-[#d7ff86] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8ff3d]"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#FDBE01] px-4 text-sm font-black text-[#02062C] transition-colors hover:bg-[#FFD34D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBE01]"
           >
             Join Track
             <ChevronRight className="size-4" />
@@ -1152,10 +1148,10 @@ function CourseCard({
 
 function JourneySection() {
   return (
-    <section className="journey-section bg-[#080808] px-4 py-24 text-[#f7f7f2] sm:px-6 lg:px-8 lg:py-32">
+    <section className="journey-section bg-[#02062C] px-4 py-24 text-[#FFFFFF] sm:px-6 lg:px-8 lg:py-32">
       <div className="mx-auto max-w-[1500px]">
         <div className="max-w-4xl" data-reveal>
-          <p className="mb-5 inline-flex items-center gap-2 text-xs font-black uppercase text-[#b8ff3d]">
+          <p className="mb-5 inline-flex items-center gap-2 text-xs font-black uppercase text-[#FDBE01]">
             <span className="h-px w-9 bg-current" />
             FROM LEARNING TO EARNING
           </p>
@@ -1166,7 +1162,7 @@ function JourneySection() {
 
         <div className="relative mt-16">
           <div className="absolute left-6 top-0 h-full w-px bg-white/12 md:left-0 md:top-10 md:h-px md:w-full">
-            <span className="journey-line-fill block h-full w-full origin-top scale-y-0 bg-[#b8ff3d] md:origin-left md:scale-x-0 md:scale-y-100" />
+            <span className="journey-line-fill block h-full w-full origin-top scale-y-0 bg-[#FDBE01] md:origin-left md:scale-x-0 md:scale-y-100" />
           </div>
           <div className="grid gap-8 md:grid-cols-6">
             {journey.map((step, index) => {
@@ -1177,10 +1173,10 @@ function JourneySection() {
                   key={step.label}
                   className="journey-step relative pl-16 [--step-opacity:.32] [--step-scale:.86] md:pl-0 md:pt-20"
                 >
-                  <span className="absolute left-0 top-0 grid size-12 scale-[var(--step-scale)] place-items-center rounded-full border border-[#b8ff3d]/45 bg-[#080808] text-[#b8ff3d] opacity-[var(--step-opacity)] shadow-[0_0_30px_rgba(184,255,61,0.18)] md:top-4">
+                  <span className="absolute left-0 top-0 grid size-12 scale-[var(--step-scale)] place-items-center rounded-full border border-[#FDBE01]/45 bg-[#02062C] text-[#FDBE01] opacity-[var(--step-opacity)] shadow-[0_0_30px_rgba(253,190,1,0.18)] md:top-4">
                     <Icon className="size-5" />
                   </span>
-                  <span className="text-sm font-black text-[#b8ff3d]">
+                  <span className="text-sm font-black text-[#FDBE01]">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   <h3 className="mt-2 text-xl font-black uppercase opacity-[var(--step-opacity)]">
@@ -1198,7 +1194,7 @@ function JourneySection() {
 
 function TrustSection() {
   return (
-    <section className="bg-[#f7f7f2] px-4 py-24 text-[#111111] sm:px-6 lg:px-8 lg:py-32">
+    <section className="bg-[#FFFFFF] px-4 py-24 text-[#02062C] sm:px-6 lg:px-8 lg:py-32">
       <div className="mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[1fr_1fr] lg:items-end">
         <div data-reveal>
           <SectionLabel>SKILLS ARE THE NEW CAREER CURRENCY</SectionLabel>
@@ -1214,7 +1210,7 @@ function TrustSection() {
             market. Builtbyskills gives you exactly the training that works in
             the real market.
           </p>
-          <div className="relative aspect-[1.65] overflow-hidden rounded-[1.2rem] border border-[#111111]/10 bg-[#111111] shadow-xl shadow-black/10">
+          <div className="relative aspect-[1.65] overflow-hidden rounded-[1.2rem] border border-[#02062C]/10 bg-[#02062C] shadow-xl shadow-black/10">
             <Image
               src="/img/sales.jpeg"
               alt="Sales and client growth visual for skill-based careers"
@@ -1222,7 +1218,7 @@ function TrustSection() {
               sizes="(min-width: 1024px) 720px, 92vw"
               className="object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#080808]/66 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#02062C]/66 to-transparent" />
           </div>
         </div>
       </div>
@@ -1249,10 +1245,10 @@ function StatCard({
 }) {
   return (
     <article
-      className="min-h-48 rounded-[1.2rem] border border-[#111111]/12 bg-white p-6 opacity-0 shadow-sm"
+      className="min-h-48 rounded-[1.2rem] border border-[#02062C]/12 bg-white p-6 opacity-0 shadow-sm"
       data-stagger-item
     >
-      <div className="text-5xl font-black uppercase text-[#111111]">
+      <div className="text-5xl font-black uppercase text-[#02062C]">
         {value}
       </div>
       <p className="mt-8 text-sm font-black uppercase text-[#5c5c5c]">{label}</p>
@@ -1262,13 +1258,13 @@ function StatCard({
 
 function PlatformStrip() {
   return (
-    <section className="overflow-hidden border-y border-[#111111]/10 bg-[#f7f7f2] py-9 text-[#111111]">
+    <section className="overflow-hidden border-y border-[#02062C]/10 bg-[#FFFFFF] py-9 text-[#02062C]">
       <div className="platform-track flex w-max gap-4">
         {[...platformMarks, ...platformMarks, ...platformMarks].map(
           (platform, index) => (
             <span
               key={`${platform}-${index}`}
-              className="inline-flex min-w-40 justify-center rounded-full border border-[#111111]/12 px-7 py-4 text-sm font-black uppercase text-[#111111]/42 grayscale transition-colors hover:border-[#b8ff3d] hover:text-[#111111]"
+              className="inline-flex min-w-40 justify-center rounded-full border border-[#02062C]/12 px-7 py-4 text-sm font-black uppercase text-[#02062C]/42 grayscale transition-colors hover:border-[#FDBE01] hover:text-[#02062C]"
             >
               {platform}
             </span>
@@ -1283,12 +1279,12 @@ function FiverrMentorship() {
   return (
     <section
       id="mentorship"
-      className="fiverr-section relative overflow-hidden bg-[#b8ff3d] px-4 py-24 text-[#080808] sm:px-6 lg:px-8 lg:py-32"
+      className="fiverr-section relative overflow-hidden bg-[#FDBE01] px-4 py-24 text-[#02062C] sm:px-6 lg:px-8 lg:py-32"
     >
       <div className="absolute inset-0 accent-grid opacity-55" />
       <div className="relative mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
         <div data-reveal>
-          <p className="mb-5 inline-flex items-center gap-2 text-xs font-black uppercase text-[#080808]">
+          <p className="mb-5 inline-flex items-center gap-2 text-xs font-black uppercase text-[#02062C]">
             <span className="h-px w-9 bg-current" />
             EXCLUSIVE BONUS
           </p>
@@ -1305,7 +1301,7 @@ function FiverrMentorship() {
               "How to land your first client",
             ].map((item) => (
               <li key={item} className="flex items-center gap-3 font-bold">
-                <span className="grid size-7 place-items-center rounded-full bg-[#080808] text-[#b8ff3d]">
+                <span className="grid size-7 place-items-center rounded-full bg-[#02062C] text-[#FDBE01]">
                   <Check className="size-4" />
                 </span>
                 {item}
@@ -1318,17 +1314,17 @@ function FiverrMentorship() {
         </div>
 
         <div className="relative min-h-[560px]">
-          <div className="fiverr-dashboard absolute left-1/2 top-20 w-[min(92vw,620px)] -translate-x-1/2 rotate-2 rounded-[1.8rem] border border-[#080808]/12 bg-[#080808] p-5 text-[#f7f7f2] shadow-2xl shadow-[#080808]/28">
+          <div className="fiverr-dashboard absolute left-1/2 top-20 w-[min(92vw,620px)] -translate-x-1/2 rotate-2 rounded-[1.8rem] border border-[#02062C]/12 bg-[#02062C] p-5 text-[#FFFFFF] shadow-2xl shadow-[#02062C]/28">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-black uppercase text-[#b8ff3d]">
+                <p className="text-xs font-black uppercase text-[#FDBE01]">
                   Freelance Dashboard
                 </p>
                 <h3 className="mt-2 text-3xl font-black uppercase">
                   Client Pipeline
                 </h3>
               </div>
-              <Rocket className="size-9 text-[#b8ff3d]" />
+              <Rocket className="size-9 text-[#FDBE01]" />
             </div>
             <div className="relative mt-6 aspect-[1.55] overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
               <Image
@@ -1337,8 +1333,9 @@ function FiverrMentorship() {
                 fill
                 sizes="(min-width: 1024px) 580px, 92vw"
                 className="object-cover"
+                style={{ filter: "url('/img/builtbyskills-visual-palette.svg#brand-palette')" }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#080808]/72 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#02062C]/72 via-transparent to-transparent" />
             </div>
             <div className="mt-5 grid gap-4 sm:grid-cols-3">
               {["Gig Live", "Message", "Order"].map((item, index) => (
@@ -1347,13 +1344,13 @@ function FiverrMentorship() {
                     0{index + 1}
                   </span>
                   <p className="mt-8 font-black">{item}</p>
-                  <span className="mt-3 block h-2 rounded-full bg-[#b8ff3d]" />
+                  <span className="mt-3 block h-2 rounded-full bg-[#FDBE01]" />
                 </div>
               ))}
             </div>
             <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-full bg-[#b8ff3d] text-[#080808]">
+                <span className="grid size-10 place-items-center rounded-full bg-[#FDBE01] text-[#02062C]">
                   <MessageSquare className="size-5" />
                 </span>
                 <div className="flex-1">
@@ -1363,21 +1360,21 @@ function FiverrMentorship() {
               </div>
             </div>
           </div>
-          <div className="fiverr-layer-left absolute left-0 top-5 w-52 -rotate-6 rounded-3xl border border-[#080808]/15 bg-[#f7f7f2] p-5 shadow-xl">
-            <p className="text-xs font-black uppercase text-[#080808]/50">
+          <div className="fiverr-layer-left absolute left-0 top-5 w-52 -rotate-6 rounded-3xl border border-[#02062C]/15 bg-[#FFFFFF] p-5 shadow-xl">
+            <p className="text-xs font-black uppercase text-[#02062C]/50">
               Gig Builder
             </p>
-            <div className="mt-8 h-20 rounded-2xl bg-[#080808]" />
+            <div className="mt-8 h-20 rounded-2xl bg-[#02062C]" />
           </div>
-          <div className="fiverr-layer-right absolute bottom-16 right-0 w-56 rotate-6 rounded-3xl border border-[#080808]/15 bg-[#ffd84d] p-5 shadow-xl">
-            <p className="text-xs font-black uppercase text-[#080808]/50">
+          <div className="fiverr-layer-right absolute bottom-16 right-0 w-56 rotate-6 rounded-3xl border border-[#02062C]/15 bg-[#FDBE01] p-5 shadow-xl">
+            <p className="text-xs font-black uppercase text-[#02062C]/50">
               First Client
             </p>
             <div className="mt-8 flex items-center gap-3">
-              <span className="grid size-11 place-items-center rounded-full bg-[#080808] text-[#b8ff3d]">
+              <span className="grid size-11 place-items-center rounded-full bg-[#02062C] text-[#FDBE01]">
                 <CircleDollarSign className="size-5" />
               </span>
-              <span className="h-3 flex-1 rounded-full bg-[#080808]/28" />
+              <span className="h-3 flex-1 rounded-full bg-[#02062C]/28" />
             </div>
           </div>
         </div>
@@ -1388,10 +1385,10 @@ function FiverrMentorship() {
 
 function Testimonials() {
   return (
-    <section className="bg-[#080808] px-4 py-24 text-[#f7f7f2] sm:px-6 lg:px-8 lg:py-32">
+    <section className="bg-[#02062C] px-4 py-24 text-[#FFFFFF] sm:px-6 lg:px-8 lg:py-32">
       <div className="mx-auto grid max-w-[1500px] gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
         <div data-reveal>
-          <p className="mb-5 inline-flex items-center gap-2 text-xs font-black uppercase text-[#b8ff3d]">
+          <p className="mb-5 inline-flex items-center gap-2 text-xs font-black uppercase text-[#FDBE01]">
             <span className="h-px w-9 bg-current" />
             SOCIAL PROOF
           </p>
@@ -1418,14 +1415,14 @@ function FinalCTA() {
   return (
     <section
       id="contact"
-      className="relative overflow-hidden bg-[#111111] px-4 py-24 text-[#f7f7f2] sm:px-6 lg:px-8 lg:py-32"
+      className="relative overflow-hidden bg-[#02062C] px-4 py-24 text-[#FFFFFF] sm:px-6 lg:px-8 lg:py-32"
     >
       <div className="absolute inset-0 hero-grid opacity-35" />
       <p className="absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap text-8xl font-black uppercase leading-none text-white/[0.035] sm:text-[8rem] lg:text-[12rem]">
         BUILTBYskills
       </p>
       <div className="relative mx-auto max-w-5xl text-center" data-reveal>
-        <p className="mb-5 inline-flex items-center gap-2 text-xs font-black uppercase text-[#b8ff3d]">
+        <p className="mb-5 inline-flex items-center gap-2 text-xs font-black uppercase text-[#FDBE01]">
           <span className="h-px w-9 bg-current" />
           NEXT BATCH
           <span className="h-px w-9 bg-current" />
@@ -1453,7 +1450,7 @@ function FinalCTA() {
 
 function Footer() {
   return (
-    <footer className="site-footer relative overflow-hidden bg-[#080808] px-4 py-16 text-[#f7f7f2] sm:px-6 lg:px-8">
+    <footer className="site-footer relative overflow-hidden bg-[#02062C] px-4 py-16 text-[#FFFFFF] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1500px]" data-stagger>
         <div
           className="grid gap-10 border-t border-white/10 pt-12 lg:grid-cols-[1.2fr_0.8fr]"
@@ -1469,7 +1466,7 @@ function Footer() {
           </div>
           <div className="grid gap-8 sm:grid-cols-2">
             <div>
-              <p className="font-black uppercase text-[#b8ff3d]">
+              <p className="font-black uppercase text-[#FDBE01]">
                 Builtbyskills
               </p>
               <div className="mt-5 grid gap-3">
@@ -1497,7 +1494,7 @@ function Footer() {
                                  ? "/contact"
                                  : "#home"
                     }
-                    className="text-sm font-semibold text-white/58 transition-colors hover:text-[#b8ff3d]"
+                    className="text-sm font-semibold text-white/58 transition-colors hover:text-[#FDBE01]"
                   >
                     {item}
                   </Link>
@@ -1505,7 +1502,7 @@ function Footer() {
               </div>
             </div>
             <div>
-              <p className="font-black uppercase text-[#b8ff3d]">Social</p>
+              <p className="font-black uppercase text-[#FDBE01]">Social</p>
               <div className="mt-5 grid gap-3">
                 {["Instagram", "Facebook", "LinkedIn"].map(
                   (item) => (

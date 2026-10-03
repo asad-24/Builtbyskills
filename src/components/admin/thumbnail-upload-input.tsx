@@ -26,8 +26,7 @@ export function ThumbnailUploadInput({ name, defaultValue }: { name: string; def
       })
 
       if (!signed.ok) {
-        const error = await signed.json()
-        setStatus(error.error || "Could not prepare upload.")
+        setStatus("Could not prepare the image upload. Please try again.")
         return
       }
 
@@ -38,7 +37,7 @@ export function ThumbnailUploadInput({ name, defaultValue }: { name: string; def
         .uploadToSignedUrl(signedPath, token, file)
 
       if (error) {
-        setStatus(error.message)
+        setStatus("The image could not be uploaded. Please try again.")
         return
       }
 
@@ -66,8 +65,7 @@ export function ThumbnailUploadInput({ name, defaultValue }: { name: string; def
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        setStatus(error.error || "Could not fetch image from URL.")
+        setStatus("Could not fetch this image. Check the link and try again.")
         return
       }
 

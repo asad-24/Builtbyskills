@@ -18,7 +18,7 @@ function enrollment(courseId = courseA, overrides: Record<string, unknown> = {})
   return {
     id: `enrollment-${courseId}`, student_id: studentId, course_id: courseId,
     status: "active", starts_at: null, expires_at: null,
-    course: { id: courseId, title: courseId, slug: courseId }, ...overrides,
+    course: { id: courseId, title: courseId, slug: courseId, status: "published" }, ...overrides,
   }
 }
 
@@ -43,7 +43,7 @@ function database(enrollments = [enrollment()], failedTable?: string) {
       { id: "draft-a", course_id: courseA, is_published: false },
     ],
     course_sections: [
-      { id: "section-a", course_id: courseA, lessons: [{ id: "lesson-a" }] },
+      { id: "section-a", course_id: courseA, lessons: [{ id: "lesson-a", status: "published", position: 1 }, { id: "hidden-draft", status: "draft", position: 2 }, { id: "hidden-archive", status: "archived", position: 3 }] },
       { id: "section-b", course_id: courseB, lessons: [{ id: "lesson-b" }] },
     ],
   }
@@ -87,6 +87,15 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
 
 describe("student dashboard course authorization", () => {
+  it.each(["draft", "unpublished", "archived"])("hides curriculum for a %s course without changing enrollment/payment history", async status => {
+    const { from } = database([enrollment(courseA, { course: { id: courseA, title: "Hidden", status } })])
+    const result = await getStudentDashboardData()
+    if (!result.ok) throw new Error(result.message)
+    expect(result.data.enrollments).toHaveLength(1)
+    expect(result.data.enrollments[0].course?.course_sections).toEqual([])
+    expect(result.data.payments).toHaveLength(1)
+    expect(from).not.toHaveBeenCalledWith("course_sections")
+  })
   it("returns only Course A sessions, published Course A/global updates and authorized curriculum", async () => {
     const { queries } = database([enrollment(), enrollment(courseB, { status: "pending" })])
     const result = await getStudentDashboardData()
@@ -101,7 +110,7 @@ describe("student dashboard course authorization", () => {
     expect(queries.course_sections.in).toHaveBeenCalledWith("course_id", [courseA])
     expect(result.data.liveClasses.map((row) => row.id)).toEqual(["live-a"])
     expect(result.data.announcements.map((row) => row.id)).toEqual(["announcement-a", "global"])
-    expect(result.data.enrollments[0].course?.course_sections[0].lessons).toEqual([{ id: "lesson-a" }])
+    expect(result.data.enrollments[0].course?.course_sections[0].lessons).toEqual([{ id: "lesson-a", status: "published", position: 1 }])
     expect(result.data.enrollments[1].course?.course_sections).toEqual([])
     expect(result.data.enrollments).toHaveLength(2) // Keep own pending enrollment history.
     expect(result.data.progress.map((row) => row.id)).toEqual(["own-progress"])

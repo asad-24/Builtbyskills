@@ -45,6 +45,33 @@ $$;
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 select set_config('request.jwt.claim.role', 'service_role', true);
 
+-- Hosted Auth createUser generates a random password hash. The explicit
+-- service-owned setup marker distinguishes it from an existing password.
+do $$
+declare p uuid; a uuid; result jsonb; label text;
+begin
+  foreach label in array array['generated-unused', 'generated-used', 'existing-unused'] loop
+    a := pg_temp.auth_student(label, label || '@example.invalid', true);
+    if label <> 'existing-unused' then
+      update auth.users set raw_app_meta_data = raw_app_meta_data ||
+        '{"payment_password_setup_required":true}'::jsonb where id = a;
+    end if;
+    if label = 'generated-used' then
+      update auth.users set last_sign_in_at = now() where id = a;
+    end if;
+    p := pg_temp.payment(label, label || '@example.invalid');
+    result := pg_temp.approve(p, true, a);
+    perform pg_temp.check_that((result->>'ok')::boolean and
+      (result->>'activation')::boolean = (label = 'generated-unused'), label || ' activation decision');
+    perform pg_temp.check_that(exists(select 1 from public.audit_logs where entity_id = p
+      and (metadata->>'activation')::boolean = (label = 'generated-unused')), label || ' durable activation receipt');
+    perform pg_temp.check_that((select encrypted_password = 'fixture-not-a-real-hash'
+      from auth.users where id = a), label || ' password never rewritten');
+    result := pg_temp.approve(p, true, a);
+    perform pg_temp.check_that((result->>'already_approved')::boolean, label || ' replay is read-only');
+  end loop;
+end $$;
+
 do $$
 declare p uuid; a uuid; s uuid; result jsonb; before_enrollment jsonb;
 begin
@@ -54,9 +81,18 @@ begin
     and result->>'email' = 'new.student@example.invalid', 'new identity preflight normalizes email');
   perform pg_temp.check_that(not exists(select 1 from public.profiles where email = 'new.student@example.invalid'),
     'preflight does not create a profile or approve');
-  a := pg_temp.auth_student('new', 'new.student@example.invalid');
+  perform pg_temp.check_that(not exists(select 1 from auth.users where email = 'new.student@example.invalid'),
+    'brand-new email does not exist in Auth');
+  -- Mirror the application createUser payload and Auth-generated password hash.
+  a := pg_temp.auth_student('new', 'new.student@example.invalid', true);
+  update auth.users set raw_app_meta_data = raw_app_meta_data ||
+    '{"payment_password_setup_required":true}'::jsonb where id = a;
+  perform pg_temp.check_that((select raw_app_meta_data->>'payment_password_setup_required' = 'true'
+    from auth.users where id = a), 'new Auth setup marker exists before finalization');
   result := pg_temp.approve(p, true, a);
   perform pg_temp.check_that((result->>'ok')::boolean and (result->>'activation')::boolean, 'new account requires activation');
+  perform pg_temp.check_that((select encrypted_password = 'fixture-not-a-real-hash' from auth.users where id = a),
+    'new account generated password is never overwritten');
   select id into s from public.profiles where auth_user_id = a;
   perform pg_temp.check_that(s is not null and s <> a, 'profile ID is distinct from Auth ID');
   perform pg_temp.check_that(exists(select 1 from public.payment_submissions where id = p and student_id = s

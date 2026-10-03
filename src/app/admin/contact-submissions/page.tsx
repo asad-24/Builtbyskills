@@ -1,3 +1,5 @@
+import { DeleteRecord } from "@/components/admin/record-actions"
+import { deleteContactSubmissionAction } from "@/actions/admin-records"
 import { AdminTable, PageHeader, SetupNotice, StatusBadge } from "@/components/admin/admin-ui"
 import { updateContactStatusAction } from "@/actions/admin"
 import { getAdminWorkspaceData } from "@/features/admin/data"
@@ -39,7 +41,7 @@ export default async function AdminContactSubmissionsPage() {
                 <p className="text-sm leading-6 text-slate-700 whitespace-pre-wrap">{item.message}</p>
                 <p className="text-xs text-slate-500">Submitted on {formatDate(item.created_at)}</p>
               </div>
-              <form action={updateContactStatusAction} className="flex flex-col gap-2 sm:w-48">
+              <div className="grid gap-3"><form action={updateContactStatusAction} className="flex flex-col gap-2 sm:w-48">
                 <input type="hidden" name="id" value={item.id} />
                 <select
                   name="status"
@@ -56,7 +58,7 @@ export default async function AdminContactSubmissionsPage() {
                 >
                   Update status
                 </button>
-              </form>
+              </form><DeleteRecord id={item.id} updatedAt={item.updated_at} label="contact submission" action={deleteContactSubmissionAction} description="Permanently delete this submission? This cannot be undone. Other submissions will be preserved." /></div>
             </div>
           </div>
         ))}

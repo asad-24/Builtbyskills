@@ -1,5 +1,38 @@
 import { describe, it, expect } from "vitest"
-import { contactSchema, enrollmentRequestSchema, splitLines } from "@/lib/validations/lms"
+import { contactSchema, enrollmentRequestSchema, paymentMethodSchema, splitLines } from "@/lib/validations/lms"
+
+describe("paymentMethodSchema IBAN support", () => {
+  const method = {
+    method_type: "bank_transfer",
+    display_name: "Bank transfer",
+    account_title: "Builtbyskills",
+    account_number: "1234567890",
+  }
+
+  it.each(["bank_transfer", "easypaisa", "jazzcash"])("preserves %s without an IBAN", (method_type) => {
+    const parsed = paymentMethodSchema.parse({ ...method, method_type })
+    expect(parsed.account_number).toBe(method.account_number)
+    expect(parsed.iban_number).toBeUndefined()
+  })
+
+  it("normalizes IBAN independently of account number", () => {
+    const parsed = paymentMethodSchema.parse({ ...method, iban_number: "pk36 scbl 0000 0011 2345 6702" })
+    expect(parsed.iban_number).toBe("PK36SCBL0000001123456702")
+    expect(parsed.account_number).toBe(method.account_number)
+  })
+
+  it("accepts a blank optional IBAN", () => {
+    expect(paymentMethodSchema.parse({ ...method, iban_number: "   " }).iban_number).toBeUndefined()
+  })
+
+  it.each(["invalid", "PKXXSCBL0000001123456702", "PK36SCBL!000001123456702"])("rejects malformed IBAN %s", (iban_number) => {
+    expect(paymentMethodSchema.safeParse({ ...method, iban_number }).success).toBe(false)
+  })
+
+  it("still requires account number when IBAN is provided", () => {
+    expect(paymentMethodSchema.safeParse({ ...method, account_number: "", iban_number: "PK36SCBL0000001123456702" }).success).toBe(false)
+  })
+})
 
 describe("contactSchema", () => {
   it("accepts valid contact data", () => {
@@ -35,22 +68,29 @@ describe("contactSchema", () => {
 })
 
 describe("enrollmentRequestSchema", () => {
-  it("accepts valid enrollment data", () => {
+  it.each([
+    {},
+    { preferred_batch: "", experience_level: "   " },
+    { preferred_batch: "Weekend", experience_level: "Beginner" },
+  ])("accepts enrollment without a student-supplied amount and optional legacy fields: %j", (legacyFields) => {
     const result = enrollmentRequestSchema.parse({
       full_name: "Jane Smith",
       email: "jane@example.com",
       phone: "03001234567",
+      whatsapp: "03001234567",
+      screenshot_path: "public-enrollment/receipt.png",
+      screenshot_upload_status: "uploaded",
       city: "Karachi",
       course_id: "550e8400-e29b-41d4-a716-446655440000",
-      preferred_batch: "Weekend",
-      experience_level: "Beginner",
-      amount: 5000,
+      ...legacyFields,
       transaction_reference: "TXN123",
       payment_method_id: "550e8400-e29b-41d4-a716-446655440001",
     })
     expect(result.full_name).toBe("Jane Smith")
     expect(result.city).toBe("Karachi")
-    expect(result.amount).toBe(5000)
+    expect(result).not.toHaveProperty("amount")
+    expect(result.preferred_batch).toBe(legacyFields.preferred_batch || undefined)
+    expect(result.experience_level).toBe(legacyFields.experience_level?.trim() ? legacyFields.experience_level : undefined)
   })
 
   it("rejects missing required fields", () => {
@@ -61,7 +101,6 @@ describe("enrollmentRequestSchema", () => {
         course_id: "c1",
         preferred_batch: "Weekend",
         experience_level: "Beginner",
-        amount: 5000,
         payment_method_id: "pm1",
       })
     ).toThrow()

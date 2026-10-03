@@ -2,12 +2,14 @@
 
 import { useActionState } from "react"
 import { useFormStatus } from "react-dom"
+import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 
 type ActionState = {
   ok: boolean
   message: string
+  nextHref?: string
 }
 
 export function ActionForm({
@@ -31,7 +33,8 @@ export function ActionForm({
           {state.message}
         </p>
       ) : null}
-      <SubmitButton label={submitLabel} />
+      {state?.ok && state.nextHref ? <Button asChild><Link href={state.nextHref}>Continue to Course Builder</Link></Button> : null}
+      {state?.ok && state.nextHref ? null : <SubmitButton label={submitLabel} />}
     </form>
   )
 }
