@@ -15,7 +15,9 @@ import {
   Menu,
   MessageSquare,
   PackageCheck,
+  Pause,
   PenTool,
+  Play,
   Rocket,
   ShoppingBag,
   Sparkles,
@@ -41,6 +43,7 @@ import { MagneticButton } from "@/components/animations/magnetic-button"
 import { useIsMobile } from "@/hooks/use-is-mobile"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { cn } from "@/lib/utils"
+import { getTrackDetailsHref, getTrackOverview } from "@/lib/courses/catalog"
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -103,7 +106,7 @@ const fallbackCourses: Course[] = [
     description:
       "Running Facebook & Instagram ads, targeting, scaling, budget optimization",
     icon: Target,
-    image: "/img/tracks/digital-marketing-track.png",
+    image: "/img/courses/digital-marketing.webp",
     imageAlt: "Digital marketing visual with campaign and audience graphics",
     className: "lg:col-span-5 lg:row-span-2",
   },
@@ -113,7 +116,7 @@ const fallbackCourses: Course[] = [
     title: "Shopify",
     description: "Store setup, product research, ecommerce management",
     icon: ShoppingBag,
-    image: "/img/tracks/shopify-track.png",
+    image: "/img/courses/shopify.webp",
     imageAlt: "Shopify training visual with ecommerce store graphics",
     className: "lg:col-span-3",
   },
@@ -123,7 +126,7 @@ const fallbackCourses: Course[] = [
     title: "Amazon",
     description: "Product listing, FBA basics, account handling",
     icon: PackageCheck,
-    image: "/img/tracks/amazon-track.png",
+    image: "/img/courses/amazon.webp",
     imageAlt: "Amazon marketplace training visual with package and rating graphics",
     className: "lg:col-span-4",
   },
@@ -133,7 +136,7 @@ const fallbackCourses: Course[] = [
     title: "eBay",
     description: "Store setup, listing optimization, sales growth",
     icon: BadgeCheck,
-    image: "/img/tracks/ebay-track.png",
+    image: "/img/courses/ebay.webp",
     imageAlt: "eBay marketplace training visual with seller and listing graphics",
     className: "lg:col-span-3",
   },
@@ -143,21 +146,12 @@ const fallbackCourses: Course[] = [
     title: "Graphic Designing",
     description: "Branding, social media creatives, client-ready designs",
     icon: PenTool,
-    image: "/img/tracks/graphic-designing-track.png",
+    image: "/img/courses/graphic-design.webp",
     imageAlt: "Graphic designing training visual with creative design workspace",
     className: "lg:col-span-4",
   },
 ]
 
-const courseThumbnailBySlug: Record<string, string> = {
-  amazon: "/img/tracks/amazon-track.png",
-  "digital-marketing": "/img/tracks/digital-marketing-track.png",
-  "meta-ads": "/img/tracks/digital-marketing-track.png",
-  ebay: "/img/tracks/ebay-track.png",
-  "graphic-design": "/img/tracks/graphic-designing-track.png",
-  "graphic-designing": "/img/tracks/graphic-designing-track.png",
-  shopify: "/img/tracks/shopify-track.png",
-}
 
 const navLinks = [
   { href: "#home", label: "Home" },
@@ -563,7 +557,7 @@ export function BuiltBySkillsLandingPage() {
         title: skill.name,
         description: skill.description || "",
         icon: resolveIcon(skill.icon_name),
-        image: courseThumbnailBySlug[skill.slug] || skill.image || "/img/builtbyskills-tracks.png",
+        image: getTrackOverview(skill.slug)?.image || skill.image || "/img/builtbyskills-tracks.png",
         imageAlt: skill.image_alt || skill.name,
         className: "lg:col-span-4",
       }))
@@ -742,19 +736,6 @@ function Hero() {
       <div className="absolute inset-0 hero-grid opacity-70" />
       <div className="hero-accent-line absolute inset-y-[-18%] right-[12%] hidden w-10 origin-bottom rotate-45 bg-[#FDBE01]/12 lg:block" />
       <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#02062C] to-transparent" />
-      <section
-        className="highlight-strip absolute inset-x-0 bottom-0 z-20 overflow-hidden border-y border-[#FDBE01]/20 bg-[#FDBE01] py-4 text-[#02062C] sm:py-5 md:bottom-0"
-        aria-label="Free Fiverr mentorship highlight"
-      >
-        <div className="highlight-track flex w-max gap-12 text-lg font-black uppercase sm:gap-16 sm:text-xl">
-          {[0, 1, 2, 3].map((item) => (
-            <span key={item} className="whitespace-nowrap" aria-hidden={item > 0}>
-              With Fiverr Free Mentorship, Get Clients and Paid
-              <span className="ml-12 text-[#02062C]/45 sm:ml-16" aria-hidden="true">✦</span>
-            </span>
-          ))}
-        </div>
-      </section>
       <div className="mx-auto grid w-full max-w-[1500px] items-end lg:items-center gap-10 px-4 pb-12 lg:pb-8 sm:px-6 lg:grid-cols-[minmax(0,1.32fr)_minmax(330px,0.68fr)] lg:px-8 xl:px-0">
         <div className="relative z-10">
           <p className="hero-eyebrow mb-4 sm:mb-6 lg:mb-4 inline-flex items-center gap-3 rounded-full border border-[#FDBE01]/30 bg-[#FDBE01]/8 px-4 py-2 text-xs font-black uppercase text-[#FDBE01]">
@@ -1050,7 +1031,7 @@ function SkillsSection({
               ))}
             </div>
             <MagneticButton
-              href="/enroll"
+              href={getTrackDetailsHref(selectedCourse.id)}
               tone="dark"
               className="mt-5 min-h-13"
             >
@@ -1059,8 +1040,10 @@ function SkillsSection({
           </div>
         </div>
 
+        <MentorshipHighlight />
+
         <div
-          className="mt-8 grid auto-rows-[minmax(290px,auto)] gap-4 md:grid-cols-2 lg:auto-rows-[380px] lg:grid-cols-12"
+          className="mt-8 grid auto-rows-[minmax(290px,auto)] gap-4 md:grid-cols-2 lg:auto-rows-[420px] lg:grid-cols-12"
           data-stagger
         >
           {courses.map((course) => (
@@ -1068,7 +1051,6 @@ function SkillsSection({
               key={course.id}
               course={course}
               selected={selectedTrack === course.id}
-              onSelect={() => setSelectedTrack(course.id)}
             />
           ))}
         </div>
@@ -1077,14 +1059,33 @@ function SkillsSection({
   )
 }
 
+function MentorshipHighlight() {
+  const [paused, setPaused] = useState(false)
+  return (
+    <div className="relative mt-8 overflow-hidden rounded-xl bg-[#FDBE01] py-4 pr-14 text-[#02062C]">
+      <p className="sr-only">Free Fiverr mentorship. Build your portfolio. Find clients. Get paid.</p>
+      <div className="highlight-track flex w-max" style={{ animationPlayState: paused ? "paused" : undefined }} aria-hidden="true">
+        {[0, 1].map(copy => (
+          <div key={copy} className="flex min-w-[max(100vw,900px)] shrink-0 items-center justify-around gap-8 pr-8 text-sm font-bold uppercase tracking-wider sm:gap-12 sm:pr-12">
+            {["Free Fiverr Mentorship", "Build Your Portfolio", "Find Clients", "Get Paid"].map(item => (
+              <span key={item} className="inline-flex items-center gap-8 whitespace-nowrap sm:gap-12"><Sparkles className="size-4" />{item}</span>
+            ))}
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={() => setPaused(value => !value)} aria-label={paused ? "Play highlights" : "Pause highlights"} className="absolute inset-y-0 right-0 grid w-14 place-items-center bg-[#FDBE01] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-[#02062C]">
+        {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
+      </button>
+    </div>
+  )
+}
+
 function CourseCard({
   course,
   selected,
-  onSelect,
 }: {
   course: Course
   selected: boolean
-  onSelect: () => void
 }) {
   const cardRef = useRef<HTMLElement>(null)
   const reducedMotion = useReducedMotion()
@@ -1113,34 +1114,29 @@ function CourseCard({
       ref={cardRef}
       data-stagger-item
       className={cn(
-        "group relative flex min-h-[310px] flex-col justify-between overflow-hidden rounded-[1.4rem] border bg-[#02062C] p-6 text-[#FFFFFF] opacity-0 transition-[border-color,box-shadow,transform] duration-300 sm:p-7",
+        "group relative flex min-h-[310px] flex-col overflow-hidden rounded-[1.4rem] border bg-[#02062C] text-[#FFFFFF] transition-[border-color,box-shadow,transform] duration-300",
         selected
-          ? "border-[#FDBE01] shadow-2xl shadow-[#FDBE01]/15"
+          ? "border-[#FDBE01]"
           : "border-white/10 hover:border-[#FDBE01]/60",
         course.className
       )}
       onMouseLeave={handleMouseLeave}
       onMouseMove={handleMouseMove}
     >
-      <div className="absolute inset-0">
+      <div className="relative min-h-48 flex-1 bg-[#02062C]">
         <Image
           src={course.image}
           alt={course.imageAlt}
           fill
           sizes="(min-width: 1024px) 42vw, (min-width: 768px) 50vw, 100vw"
-          className="object-cover opacity-[0.72] transition-transform duration-700 ease-out group-hover:scale-105"
+          className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#02062C]/30 via-[#02062C]/46 to-[#02062C]/96" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#02062C]/88 via-[#02062C]/42 to-transparent" />
-      </div>
-      <div className="absolute inset-0 course-card-lines opacity-32 mix-blend-screen" />
-      <div className="relative z-10 flex items-center justify-between">
-        <span className="text-sm font-black text-white/42">{course.number}</span>
-        <span className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/8 text-[#FDBE01] transition-transform duration-300 group-hover:rotate-6">
-          <Icon className="size-5" />
+        <span className="absolute left-4 top-4 rounded-full bg-[#02062C] px-3 py-1 text-xs font-bold text-white">{course.number}</span>
+        <span className="absolute right-4 top-4 grid size-9 place-items-center rounded-full bg-[#02062C] text-[#FDBE01]">
+          <Icon className="size-4" />
         </span>
       </div>
-      <div className="relative z-10 mt-16">
+      <div className="relative z-10 border-t border-white/10 bg-[#02062C] p-6">
         <h3 className="text-2xl font-black uppercase leading-none transition-transform duration-300 group-hover:translate-x-1 sm:text-3xl">
           {course.title}
         </h3>
@@ -1148,16 +1144,15 @@ function CourseCard({
           {course.description}
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={onSelect}
+          <Link
+            href={getTrackDetailsHref(course.id)}
             className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/14 px-4 text-sm font-bold text-white transition-colors hover:border-[#FDBE01] hover:text-[#FDBE01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBE01]"
           >
-            {selected ? "Selected" : "Learn More"}
+            Learn More
             <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
-          </button>
+          </Link>
           <Link
-            href="/enroll"
+            href={getTrackDetailsHref(course.id)}
             className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#FDBE01] px-4 text-sm font-black text-[#02062C] transition-colors hover:bg-[#FFD34D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBE01]"
           >
             Join Track

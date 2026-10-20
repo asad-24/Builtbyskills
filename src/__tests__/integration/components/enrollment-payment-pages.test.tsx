@@ -24,10 +24,10 @@ describe("Enrollment payment pages", () => {
       courses: [{ id: "course-1", title: "Shopify", price: 5000, currency: "PKR" }],
       paymentMethods: [{ id: "method-1", display_name: "Bank transfer", method_type: "bank_transfer", account_title: "Academy", account_number: "1234", iban_number: "PK00", bank_name: "Bank", instructions: null, is_active: true }],
     } } as never)
-    const { container } = render(await EnrollPage())
+    const { container } = render(await EnrollPage({ searchParams: Promise.resolve({ course: "course-1" }) }))
     expect(container.querySelector('[name="transaction_reference"]')).toBeNull()
     expect(screen.queryByText(/transaction reference|payment reference/i)).toBeNull()
-    expect(container.querySelector('[name="course_id"]')).not.toBeNull()
+    expect(screen.getByLabelText("Selected course")).toHaveValue("course-1")
     expect(container.querySelector('[name="payment_method_id"]')).not.toBeNull()
     expect(container.querySelector('input[type="file"]')).not.toBeNull()
     expect(container.querySelector('[name="preferred_batch"]')).toBeNull()

@@ -10,7 +10,7 @@ import type { Course } from "@/types/lms"
 const mockCourse: Course = {
   id: "course-1",
   title: "Shopify Mastery",
-  slug: "shopify-mastery",
+  slug: "custom-course",
   short_description: "Learn Shopify from scratch.",
   description: "Full course description.",
   category: "E-commerce",
@@ -32,12 +32,18 @@ describe("CourseCard", () => {
   it("supports optional category and audience without empty badges or broken enrollment links", () => {
     const { container } = render(<CourseCard course={{ ...mockCourse, category: "", level: "", currency: "USD", price: 25.5 }} />)
     expect(container.querySelectorAll("span")).toHaveLength(2)
-    expect(screen.getByRole("link", { name: "View Details" })).toHaveAttribute("href", "/courses/shopify-mastery")
-    expect(screen.getByRole("link", { name: "Enroll Now" })).toHaveAttribute("href", "/enroll?course=course-1")
+    expect(screen.getByRole("link", { name: "View Details" })).toHaveAttribute("href", "/courses/custom-course")
+    expect(screen.getByRole("link", { name: "Explore Course" })).toHaveAttribute("href", "/courses/custom-course")
+  })
+  it("uses clean artwork and a single professional title for a standard track", () => {
+    render(<CourseCard course={{ ...mockCourse, slug: "shopify-18ffb88a" }} />)
+    expect(screen.getByRole("img")).toHaveAttribute("src", "/img/courses/shopify.webp")
+    expect(screen.getByText("Shopify Complete Course")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Explore Course" })).toHaveAttribute("href", "/courses/shopify-18ffb88a")
   })
   it("renders course title and description", () => {
     render(<CourseCard course={mockCourse} />)
-    expect(screen.getByText("Shopify Mastery")).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Shopify Mastery" })).toBeInTheDocument()
     expect(screen.getByText("Learn Shopify from scratch.")).toBeInTheDocument()
   })
 
@@ -57,10 +63,10 @@ describe("CourseCard", () => {
     expect(screen.getByText("PKR 5,000")).toBeInTheDocument()
   })
 
-  it("renders View Details and Enroll Now buttons", () => {
+  it("renders course details links before enrollment", () => {
     render(<CourseCard course={mockCourse} />)
     expect(screen.getByRole("link", { name: "View Details" })).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "Enroll Now" })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Explore Course" })).toBeInTheDocument()
   })
 
   it("renders image when thumbnail_url is provided", () => {

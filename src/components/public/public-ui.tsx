@@ -1,6 +1,6 @@
-import Image from "next/image"
 import Link from "next/link"
 
+import { CourseArtwork } from "@/components/public/course-artwork"
 import { Button } from "@/components/ui/button"
 import { formatMoney } from "@/lib/format"
 import type { Course } from "@/types/lms"
@@ -17,11 +17,7 @@ export function PublicNotice({ title, message }: { title: string; message: strin
 export function CourseCard({ course }: { course: Course }) {
   return (
     <article className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-      <div className="relative aspect-[16/10] bg-slate-100">
-        {course.thumbnail_url ? (
-          <Image src={course.thumbnail_url} alt={`${course.title} thumbnail`} fill className="object-cover" />
-        ) : null}
-      </div>
+      <CourseArtwork slug={course.slug} image={course.thumbnail_url} title={course.title} showTitle />
       <div className="p-5">
         {course.category ? <p className="text-xs font-semibold uppercase tracking-wide text-lime-700">{course.category}</p> : null}
         <h2 className="mt-2 text-xl font-semibold text-slate-950">{course.title}</h2>
@@ -36,7 +32,7 @@ export function CourseCard({ course }: { course: Course }) {
             <Link href={`/courses/${course.slug}`}>View Details</Link>
           </Button>
           <Button asChild>
-            <Link href={`/enroll?course=${course.id}`}>Enroll Now</Link>
+            <Link href={`/courses/${course.slug}`}>Explore Course</Link>
           </Button>
         </div>
       </div>

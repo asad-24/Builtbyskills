@@ -11,13 +11,14 @@ import { formatMoney } from "@/lib/format"
 type Props = {
   courses: { id: string; title: string; price: number; currency: string }[]
   methods: React.ComponentProps<typeof PaymentMethodSelector>["methods"]
+  initialCourseId?: string
 }
 const fieldOrder = ["full_name", "email", "phone", "whatsapp", "course_id", "payment_method_id", "screenshot_path"]
 const inputClass = "h-10 rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-lime-500 focus:ring-3 focus:ring-lime-200"
 
-export function EnrollmentForm({ courses, methods }: Props) {
+export function EnrollmentForm({ courses, methods, initialCourseId = "" }: Props) {
   const [errors, setErrors] = useState<Record<string, string> | null>(null)
-  const [values, setValues] = useState<Record<string, string>>({})
+  const [values, setValues] = useState<Record<string, string>>({ course_id: initialCourseId })
   const [uploadVersion, setUploadVersion] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
   const [state, action, pending] = useActionState(async (

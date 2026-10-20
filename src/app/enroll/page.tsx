@@ -10,8 +10,12 @@ export const metadata = {
   title: "Enroll | Builtbyskills",
 }
 
-export default async function EnrollPage() {
+export default async function EnrollPage({ searchParams }: {
+  searchParams?: Promise<{ course?: string | string[] }>
+} = {}) {
   const result = await getEnrollmentPageData()
+  const requestedCourse = (await searchParams)?.course
+  const initialCourseId = result.ok && typeof requestedCourse === "string" && result.data.courses.some(course => course.id === requestedCourse) ? requestedCourse : ""
 
   return (
     <PublicPageShell>
@@ -22,7 +26,7 @@ export default async function EnrollPage() {
         ) : (
           <div className="mx-auto max-w-3xl">
             <section className="rounded-lg border border-slate-200 bg-white p-5">
-              <EnrollmentForm courses={result.data.courses} methods={result.data.paymentMethods} />
+              <EnrollmentForm courses={result.data.courses} methods={result.data.paymentMethods} initialCourseId={initialCourseId} />
             </section>
           </div>
         )}
