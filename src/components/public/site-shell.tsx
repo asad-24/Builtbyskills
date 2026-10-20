@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
+import { WhatsAppButton } from "@/components/public/whatsapp-button"
 
 const links = [
   { href: "/", label: "Home" },
@@ -45,6 +46,7 @@ export function PublicPageShell({ children }: { children: React.ReactNode }) {
           <p className="mt-3 text-sm text-white/60">Practical digital skills academy with live classes, mentorship, and guided enrollment.</p>
         </div>
       </footer>
+      <WhatsAppButton />
     </div>
   )
 }
