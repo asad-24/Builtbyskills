@@ -103,7 +103,7 @@ const fallbackCourses: Course[] = [
     description:
       "Running Facebook & Instagram ads, targeting, scaling, budget optimization",
     icon: Target,
-    image: "/img/Digital%20Marketing.png",
+    image: "/img/tracks/digital-marketing-track.png",
     imageAlt: "Digital marketing visual with campaign and audience graphics",
     className: "lg:col-span-5 lg:row-span-2",
   },
@@ -113,7 +113,7 @@ const fallbackCourses: Course[] = [
     title: "Shopify",
     description: "Store setup, product research, ecommerce management",
     icon: ShoppingBag,
-    image: "/img/Shopify.png",
+    image: "/img/tracks/shopify-track.png",
     imageAlt: "Shopify training visual with ecommerce store graphics",
     className: "lg:col-span-3",
   },
@@ -123,7 +123,7 @@ const fallbackCourses: Course[] = [
     title: "Amazon",
     description: "Product listing, FBA basics, account handling",
     icon: PackageCheck,
-    image: "/img/AMAZON.png",
+    image: "/img/tracks/amazon-track.png",
     imageAlt: "Amazon marketplace training visual with package and rating graphics",
     className: "lg:col-span-4",
   },
@@ -133,7 +133,7 @@ const fallbackCourses: Course[] = [
     title: "eBay",
     description: "Store setup, listing optimization, sales growth",
     icon: BadgeCheck,
-    image: "/img/EBAY.png",
+    image: "/img/tracks/ebay-track.png",
     imageAlt: "eBay marketplace training visual with seller and listing graphics",
     className: "lg:col-span-3",
   },
@@ -143,11 +143,21 @@ const fallbackCourses: Course[] = [
     title: "Graphic Designing",
     description: "Branding, social media creatives, client-ready designs",
     icon: PenTool,
-    image: "/img/Graphic%20desiging.png",
+    image: "/img/tracks/graphic-designing-track.png",
     imageAlt: "Graphic designing training visual with creative design workspace",
     className: "lg:col-span-4",
   },
 ]
+
+const courseThumbnailBySlug: Record<string, string> = {
+  amazon: "/img/tracks/amazon-track.png",
+  "digital-marketing": "/img/tracks/digital-marketing-track.png",
+  "meta-ads": "/img/tracks/digital-marketing-track.png",
+  ebay: "/img/tracks/ebay-track.png",
+  "graphic-design": "/img/tracks/graphic-designing-track.png",
+  "graphic-designing": "/img/tracks/graphic-designing-track.png",
+  shopify: "/img/tracks/shopify-track.png",
+}
 
 const navLinks = [
   { href: "#home", label: "Home" },
@@ -553,7 +563,7 @@ export function BuiltBySkillsLandingPage() {
         title: skill.name,
         description: skill.description || "",
         icon: resolveIcon(skill.icon_name),
-        image: skill.image || "/img/builtbyskills-tracks.png",
+        image: courseThumbnailBySlug[skill.slug] || skill.image || "/img/builtbyskills-tracks.png",
         imageAlt: skill.image_alt || skill.name,
         className: "lg:col-span-4",
       }))
@@ -732,6 +742,19 @@ function Hero() {
       <div className="absolute inset-0 hero-grid opacity-70" />
       <div className="hero-accent-line absolute inset-y-[-18%] right-[12%] hidden w-10 origin-bottom rotate-45 bg-[#FDBE01]/12 lg:block" />
       <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#02062C] to-transparent" />
+      <section
+        className="highlight-strip absolute inset-x-0 bottom-0 z-20 overflow-hidden border-y border-[#FDBE01]/20 bg-[#FDBE01] py-4 text-[#02062C] sm:py-5 md:bottom-0"
+        aria-label="Free Fiverr mentorship highlight"
+      >
+        <div className="highlight-track flex w-max gap-12 text-lg font-black uppercase sm:gap-16 sm:text-xl">
+          {[0, 1, 2, 3].map((item) => (
+            <span key={item} className="whitespace-nowrap" aria-hidden={item > 0}>
+              With Fiverr Free Mentorship, Get Clients and Paid
+              <span className="ml-12 text-[#02062C]/45 sm:ml-16" aria-hidden="true">✦</span>
+            </span>
+          ))}
+        </div>
+      </section>
       <div className="mx-auto grid w-full max-w-[1500px] items-end lg:items-center gap-10 px-4 pb-12 lg:pb-8 sm:px-6 lg:grid-cols-[minmax(0,1.32fr)_minmax(330px,0.68fr)] lg:px-8 xl:px-0">
         <div className="relative z-10">
           <p className="hero-eyebrow mb-4 sm:mb-6 lg:mb-4 inline-flex items-center gap-3 rounded-full border border-[#FDBE01]/30 bg-[#FDBE01]/8 px-4 py-2 text-xs font-black uppercase text-[#FDBE01]">
@@ -997,7 +1020,7 @@ function SkillsSection({
   return (
     <section
       id="skills"
-      className="relative overflow-hidden bg-[#FFFFFF] px-4 py-24 text-[#02062C] sm:px-6 lg:px-8 lg:py-32"
+      className="relative overflow-hidden bg-[#FFFFFF] px-4 pt-8 pb-24 text-[#02062C] sm:px-6 sm:pt-10 lg:px-8 lg:pt-12 lg:pb-32"
     >
       <div className="mx-auto max-w-[1500px]">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
@@ -1037,7 +1060,7 @@ function SkillsSection({
         </div>
 
         <div
-          className="mt-8 grid auto-rows-[minmax(290px,auto)] gap-4 md:grid-cols-2 lg:grid-cols-12"
+          className="mt-8 grid auto-rows-[minmax(290px,auto)] gap-4 md:grid-cols-2 lg:auto-rows-[380px] lg:grid-cols-12"
           data-stagger
         >
           {courses.map((course) => (

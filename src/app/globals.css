@@ -193,12 +193,20 @@
     animation: marquee 22s linear infinite;
   }
 
+  .highlight-track {
+    animation: marquee 24s linear infinite;
+  }
+
   .platform-track {
     animation: marquee-reverse 20s linear infinite;
   }
 
   .marquee-track:hover,
   .platform-track:hover {
+    animation-play-state: paused;
+  }
+
+  .highlight-track:hover {
     animation-play-state: paused;
   }
 }
