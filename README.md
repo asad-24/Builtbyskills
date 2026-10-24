@@ -23,8 +23,8 @@ Fill `.env.local` with:
 
 - `NEXT_PUBLIC_SITE_URL`
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (or legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
+- `SUPABASE_SECRET_KEY` (or legacy `SUPABASE_SERVICE_ROLE_KEY`)
 - `BREVO_API_KEY`
 - `EMAIL_FROM`
 - `EMAIL_FROM_NAME` (optional)
@@ -62,10 +62,14 @@ Existing legacy YouTube lessons remain compatible during rollout; their unlisted
 
 ## Vercel Deployment
 
-1. Add all environment variables in Vercel Project Settings.
-2. Deploy from the repository.
-3. Run Supabase migrations before opening admin routes.
-4. Verify `NEXT_PUBLIC_SITE_URL` matches the production domain.
+The application uses **one existing Supabase database** for admin, teachers, students, courses, and enrollments. A second Supabase project is not required for deployment.
+
+1. The local, gitignored `.env.vercel` contains the existing project's URL, matching public/server keys, existing Brevo settings, and `NEXT_PUBLIC_SITE_URL=https://builtbyskills.vercel.app`. Import its values into the Vercel project's environment settings. Both new and compatibility key names deliberately contain the same existing project's keys, so older names cannot select another project. Keep this file out of Git.
+2. On the existing database, apply the pending `supabase/migrations/202610240001_course_portals.sql` migration before deploying the new portals. For the SQL Editor, [the ready-to-run deployment file](supabase/deploy/course-portals-existing.sql) wraps that migration in a single transaction. Run the whole file once in the existing project's SQL Editor. The app's API key cannot apply schema migrations; connected Supabase project tools or its PostgreSQL connection can also apply the migration. Do not replay the initial schema or development seed on the existing database. See [course portal deployment details](docs/course-portals-implementation.md).
+3. In that same Supabase project's Auth settings, set the production Site URL and allow `https://builtbyskills.vercel.app/auth/confirm`, `https://builtbyskills.vercel.app/auth/callback`, and `https://builtbyskills.vercel.app/reset-password`. Keep the existing email/SMTP setup. For a different live domain, update these URLs and `NEXT_PUBLIC_SITE_URL` together.
+4. Deploy the updated repository after saving the Vercel environment values; existing deployments do not acquire changed variables until redeployed. Check registration/login, teacher course assignment, publishing, approved enrollment, and student class/recording access on the resulting deployment.
+
+The class/recording link features do not need R2 credentials. Private R2 lesson video uploads/playback additionally need the four server-only R2 variables described above; copy existing Vercel R2 settings if already configured. Database passwords and automated-test variables are not runtime requirements for Vercel.
 
 ## Admin Account Creation
 

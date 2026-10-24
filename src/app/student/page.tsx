@@ -1,9 +1,10 @@
 import Link from "next/link"
 
-import { AdminTable, PageHeader, SetupNotice, StatCard, StatusBadge } from "@/components/admin/admin-ui"
+import { AdminTable, PageHeader, SetupNotice, StatCard } from "@/components/admin/admin-ui"
 import { Button } from "@/components/ui/button"
 import { getStudentDashboardData } from "@/features/student/data"
 import { formatDate } from "@/lib/format"
+import { StudentClassLinks } from "@/components/student/course-links"
 import { firstAccessibleLesson } from "@/lib/lessons/discovery"
 import { enrollmentIsActive } from "@/lib/permissions"
 import type { SectionWithLessons } from "@/types/lms"
@@ -44,8 +45,7 @@ export default async function StudentDashboardPage() {
         </div>
       ) : activeEnrollments.length ? <p className="mt-6 text-sm text-slate-600">No published lessons are available yet.</p> : null}
       <section className="mt-6">
-        <h2 className="mb-3 font-semibold">Next live class</h2>
-        <AdminTable columns={["Title", "Course", "Starts", "Status"]} rows={result.data.liveClasses.slice(0, 1).map((item) => [item.title, item.course?.title ?? "Course", formatDate(item.starts_at), <StatusBadge key={item.id}>{item.status}</StatusBadge>])} />
+        <StudentClassLinks classes={result.data.liveClasses} recordings={result.data.recordings} />
       </section>
       <section className="mt-6">
         <h2 className="mb-3 font-semibold">Recent announcements</h2>

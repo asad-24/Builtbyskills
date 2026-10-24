@@ -2,7 +2,7 @@ import "server-only"
 
 import { AppAuthError, AppForbiddenError, MissingEnvironmentError } from "@/lib/errors"
 import { requireRole } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createSupabaseServerClient } from "@/lib/supabase/server"
 import type { AppResult } from "@/types/lms"
 
 function appError(error: unknown): AppResult<never> {
@@ -17,22 +17,14 @@ function appError(error: unknown): AppResult<never> {
 export async function getInstructorDashboardData() {
   try {
     const profile = await requireRole(["instructor"])
-    const supabase = createSupabaseAdminClient()
-    const [assigned, liveClasses, announcements] = await Promise.all([
-      supabase
-        .from("instructor_courses")
-        .select("*, course:courses(*, enrollments(*), course_sections(*, lessons(*)))")
-        .eq("instructor_id", profile.id),
-      supabase
-        .from("live_classes")
-        .select("*, course:courses(title)")
-        .eq("instructor_id", profile.id)
-        .order("starts_at"),
-      supabase
-        .from("announcements")
-        .select("*, course:courses(title)")
-        .eq("author_id", profile.id)
-        .order("created_at", { ascending: false }),
+    const supabase = await createSupabaseServerClient()
+    const assigned = await supabase.from("instructor_courses")
+      .select("*, course:courses(*, enrollments(*), course_sections(*, lessons(*)))").eq("instructor_id", profile.id)
+    if (assigned.error) throw assigned.error
+    const ids = (assigned.data ?? []).map(item => item.course_id as string)
+    const [liveClasses, announcements] = await Promise.all([
+      ids.length ? supabase.from("live_classes").select("*, course:courses(title)").in("course_id", ids).order("starts_at") : { data: [], error: null },
+      ids.length ? supabase.from("announcements").select("*, course:courses(title)").in("course_id", ids).order("created_at", { ascending: false }) : { data: [], error: null },
     ])
 
     const failed = [assigned, liveClasses, announcements].find((result) => result.error)

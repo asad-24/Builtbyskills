@@ -35,10 +35,9 @@ export async function getStudentDashboardData() {
     // Service-role queries bypass RLS. Derive access from this student's own
     // enrollments using the same status/time-window rules as lesson access.
     const authorizedCourseIds = [...new Set(
-      (enrollments.data ?? []).filter(enrollmentIsActive).map((enrollment) => enrollment.course_id as string)
+      (enrollments.data ?? []).filter(enrollment => enrollmentIsActive(enrollment) && enrollment.course?.status === "published").map((enrollment) => enrollment.course_id as string)
     )]
-    // Curriculum publication protection only; enrollment history, payment,
-    // live class and announcement behavior stays unchanged.
+    // Keep enrollment/payment history while withholding unpublished content.
     const publishedCurriculumIds = [...new Set((enrollments.data ?? [])
       .filter(enrollment => enrollmentIsActive(enrollment) && enrollment.course?.status === "published")
       .map(enrollment => enrollment.course_id as string))]
@@ -50,12 +49,13 @@ export async function getStudentDashboardData() {
       ? announcementQuery.or(`course_id.is.null,course_id.in.(${authorizedCourseIds.join(",")})`)
       : announcementQuery.is("course_id", null)
 
-    const [liveClasses, announcements, sections] = await Promise.all([
+    const [liveClasses, announcements, sections, recordings] = await Promise.all([
       authorizedCourseIds.length ? supabase
         .from("live_classes")
-        .select("*, course:courses(title)")
+        .select("id,course_id,title,starts_at,status,course:courses(title)")
         .in("course_id", authorizedCourseIds)
-        .gte("starts_at", new Date().toISOString())
+        .in("status", ["scheduled", "live"])
+        .or(`status.eq.live,starts_at.gte.${new Date().toISOString()}`)
         .order("starts_at")
         .limit(10) : { data: [], error: null },
       scopedAnnouncements
@@ -65,9 +65,12 @@ export async function getStudentDashboardData() {
         .from("course_sections")
         .select("*, lessons(*)")
         .in("course_id", publishedCurriculumIds) : { data: [], error: null },
+      authorizedCourseIds.length ? supabase.from("course_recordings")
+        .select("id,course_id,title,description,created_at,course:courses(title)").in("course_id", authorizedCourseIds)
+        .eq("is_published", true).order("created_at", { ascending: false }) : { data: [], error: null },
     ])
 
-    const failed = [liveClasses, announcements, sections].find((result) => result.error)
+    const failed = [liveClasses, announcements, sections, recordings].find((result) => result.error)
     if (failed?.error) throw failed.error
 
     return {
@@ -86,6 +89,7 @@ export async function getStudentDashboardData() {
         })),
         progress: progress.data ?? [],
         liveClasses: liveClasses.data ?? [],
+        recordings: recordings.data ?? [],
         announcements: announcements.data ?? [],
         payments: payments.data ?? [],
       },

@@ -31,9 +31,14 @@ function database(enrollments = [enrollment()], failedTable?: string) {
     lesson_progress: [{ id: "own-progress", student_id: studentId }, { id: "other-progress", student_id: "other-student" }],
     payment_submissions: [{ id: "own-payment", student_id: studentId }, { id: "other-payment", student_id: "other-student" }],
     live_classes: [
-      { id: "live-b", course_id: courseB, starts_at: "2026-09-15T12:00:00.000Z" },
-      { id: "live-a", course_id: courseA, starts_at: "2026-09-16T12:00:00.000Z" },
-      { id: "past-a", course_id: courseA, starts_at: "2026-09-13T12:00:00.000Z" },
+      { id: "live-b", course_id: courseB, status: "scheduled", starts_at: "2026-09-15T12:00:00.000Z" },
+      { id: "live-a", course_id: courseA, status: "scheduled", starts_at: "2026-09-16T12:00:00.000Z" },
+      { id: "past-a", course_id: courseA, status: "scheduled", starts_at: "2026-09-13T12:00:00.000Z" },
+    ],
+    course_recordings: [
+      { id: "recording-a", course_id: courseA, title: "Course A recording", is_published: true },
+      { id: "recording-b", course_id: courseB, title: "Course B recording", is_published: true },
+      { id: "draft-recording", course_id: courseA, title: "Draft", is_published: false },
     ],
     announcements: [
       { id: "announcement-b", course_id: courseB, is_published: true },
@@ -56,6 +61,11 @@ function database(enrollments = [enrollment()], failedTable?: string) {
       in: vi.fn((column: string, values: unknown[]) => { rows = rows.filter((row) => values.includes(row[column])); return chain }),
       is: vi.fn((column: string, value: unknown) => { rows = rows.filter((row) => row[column] === value); return chain }),
       or: vi.fn((expression: string) => {
+        if (table === "live_classes") {
+          const date = expression.replace("status.eq.live,starts_at.gte.", "")
+          rows = rows.filter(row => row.status === "live" || row.starts_at >= date)
+          return chain
+        }
         const match = /^course_id\.is\.null,course_id\.in\.\(([^)]+)\)$/.exec(expression)
         if (!match) throw new Error(`Unexpected authorization filter: ${expression}`)
         const ids = match[1].split(",")
@@ -109,13 +119,14 @@ describe("student dashboard course authorization", () => {
     expect(queries.announcements.eq).toHaveBeenCalledWith("is_published", true)
     expect(queries.course_sections.in).toHaveBeenCalledWith("course_id", [courseA])
     expect(result.data.liveClasses.map((row) => row.id)).toEqual(["live-a"])
+    expect(result.data.recordings.map(row => row.id)).toEqual(["recording-a"])
     expect(result.data.announcements.map((row) => row.id)).toEqual(["announcement-a", "global"])
     expect(result.data.enrollments[0].course?.course_sections[0].lessons).toEqual([{ id: "lesson-a", status: "published", position: 1 }])
     expect(result.data.enrollments[1].course?.course_sections).toEqual([])
     expect(result.data.enrollments).toHaveLength(2) // Keep own pending enrollment history.
     expect(result.data.progress.map((row) => row.id)).toEqual(["own-progress"])
     expect(result.data.payments.map((row) => row.id)).toEqual(["own-payment"])
-    expect(Object.keys(result.data).sort()).toEqual(["announcements", "enrollments", "liveClasses", "payments", "profile", "progress"])
+    expect(Object.keys(result.data).sort()).toEqual(["announcements", "enrollments", "liveClasses", "payments", "profile", "progress", "recordings"])
     expect(queries.live_classes.limit).toHaveBeenCalledWith(10)
     expect(queries.announcements.limit).toHaveBeenCalledWith(10)
   })
@@ -123,7 +134,7 @@ describe("student dashboard course authorization", () => {
   it.each([
     ["expired", { expires_at: "2026-09-14T11:59:59.999Z" }],
     ["expiry instant (exclusive)", { expires_at: now }],
-    ["future start", { starts_at: "2026-09-14T12:00:00.001Z" }],
+    ["future start", { status: "scheduled", starts_at: "2026-09-14T12:00:00.001Z" }],
     ...["pending", "suspended", "completed", "expired", "cancelled"].map((status): [string, Record<string, unknown>] => [status, { status }]),
   ])("does not grant course access for %s enrollment", async (_label, overrides) => {
     const { from, queries } = database([enrollment(courseA, overrides)])
@@ -155,6 +166,7 @@ describe("student dashboard course authorization", () => {
     const result = await getStudentDashboardData()
     if (!result.ok) throw new Error(result.message)
     expect(result.data.liveClasses.map((row) => row.id)).toEqual(["live-a"])
+    expect(result.data.recordings.map(row => row.id)).toEqual(["recording-a"])
   })
 
   it("includes every authorized course", async () => {

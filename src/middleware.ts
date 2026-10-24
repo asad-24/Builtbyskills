@@ -5,6 +5,8 @@ import { getPublicEnv } from "@/lib/env"
 const PUBLIC_ROUTES = new Set([
   "/",
   "/login",
+  "/register",
+  "/auth/confirm",
   "/forgot-password",
   "/reset-password",
   "/courses",

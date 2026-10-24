@@ -12,6 +12,8 @@ type CourseRow = Course & { instructor?: PersonRef | null }
 type StudentRow = Profile
 type InstructorRow = Profile
 type EnrollmentRow = Record<string, unknown> & {
+  student_id: string
+  course_id: string
   id: string
   status: string
   starts_at: string | null
@@ -82,6 +84,7 @@ type AuditLogRow = Record<string, unknown> & {
 }
 
 export type AdminWorkspaceData = {
+  pagination?: { page: number; hasNext: boolean }
   stats: AdminStats
   courses: CourseRow[]
   instructors: InstructorRow[]
@@ -108,7 +111,7 @@ function getSetupErrorMessage(error: unknown) {
     const message = (error as { message?: unknown }).message
     if (typeof message === "string" && message.trim()) {
       if (message.toLowerCase().includes("invalid api key")) {
-        return "Supabase service role key is invalid. Update SUPABASE_SERVICE_ROLE_KEY in Vercel and redeploy."
+        return "Supabase server key is invalid. Update SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) in Vercel and redeploy."
       }
       return message
     }
@@ -148,11 +151,14 @@ async function countRows(supabase: ReturnType<typeof createSupabaseAdminClient>,
   return count ?? 0
 }
 
-export async function getAdminWorkspaceData(): Promise<AppResult<AdminWorkspaceData>> {
+export async function getAdminWorkspaceData(pagination?: { entity: "courses" | "instructors" | "students" | "enrollments"; page?: string }): Promise<AppResult<AdminWorkspaceData>> {
   try {
     await requireAdmin()
     const supabase = createSupabaseAdminClient()
     const now = new Date().toISOString()
+    const requested = Number(pagination?.page ?? 1)
+    const page = Number.isSafeInteger(requested) && requested > 0 ? Math.min(requested, 100000) : 1
+    const bounds = (entity: string): [number, number] => pagination?.entity === entity ? [(page-1)*50, (page-1)*50+50] : [0,49]
 
     const [
       totalStudents,
@@ -193,24 +199,24 @@ export async function getAdminWorkspaceData(): Promise<AppResult<AdminWorkspaceD
         .from("courses")
         .select("*, instructor:profiles!courses_instructor_id_fkey(id, full_name, email)")
         .order("created_at", { ascending: false })
-        .limit(50),
+        .range(...bounds("courses")),
       supabase
         .from("profiles")
         .select("*")
         .eq("role", "instructor")
         .order("created_at", { ascending: false })
-        .limit(50),
+        .range(...bounds("instructors")),
       supabase
         .from("profiles")
         .select("*")
         .eq("role", "student")
         .order("created_at", { ascending: false })
-        .limit(50),
+        .range(...bounds("students")),
       supabase
         .from("enrollments")
         .select("*, student:profiles!enrollments_student_id_fkey(full_name,email,status), course:courses(title,slug)")
         .order("created_at", { ascending: false })
-        .limit(50),
+        .range(...bounds("enrollments")),
       supabase
         .from("payment_submissions")
         .select("*, course:courses(title,slug), student:profiles!payment_submissions_student_id_fkey(full_name,email)")
@@ -270,10 +276,11 @@ export async function getAdminWorkspaceData(): Promise<AppResult<AdminWorkspaceD
           upcomingLiveClasses,
           completedLessons,
         },
-        courses: (courses.data ?? []) as CourseRow[],
-        instructors: (instructors.data ?? []) as InstructorRow[],
-        students: (students.data ?? []) as StudentRow[],
-        enrollments: (enrollments.data ?? []) as EnrollmentRow[],
+        ...(pagination ? { pagination: { page, hasNext: ({ courses, instructors, students, enrollments }[pagination.entity].data?.length ?? 0) > 50 } } : {}),
+        courses: (courses.data ?? []).slice(0,50) as CourseRow[],
+        instructors: (instructors.data ?? []).slice(0,50) as InstructorRow[],
+        students: (students.data ?? []).slice(0,50) as StudentRow[],
+        enrollments: (enrollments.data ?? []).slice(0,50) as EnrollmentRow[],
         payments: (payments.data ?? []) as PaymentRow[],
         paymentMethods: (paymentMethods.data ?? []) as PaymentMethodRow[],
         liveClasses: (liveClasses.data ?? []) as LiveClassRow[],

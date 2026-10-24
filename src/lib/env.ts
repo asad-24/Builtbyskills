@@ -5,11 +5,6 @@ import { MissingEnvironmentError } from "@/lib/errors"
 const publicKeys = [
   "NEXT_PUBLIC_SITE_URL",
   "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-] as const
-
-const supabaseAdminKeys = [
-  "SUPABASE_SERVICE_ROLE_KEY",
 ] as const
 
 const emailKeys = [
@@ -21,10 +16,11 @@ export function getPublicEnv() {
   const env = {
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   }
 
-  const missing = publicKeys.filter((key) => !process.env[key])
+  const missing: string[] = publicKeys.filter((key) => !process.env[key])
+  if (!env.supabaseAnonKey) missing.push("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY)")
   if (missing.length > 0) {
     throw new MissingEnvironmentError(missing)
   }
@@ -36,17 +32,16 @@ export function getPublicEnv() {
 }
 
 export function getServerEnv() {
-  const publicEnv = getPublicEnv()
+  const publicEnv = getSupabaseAdminEnv()
   const env = {
     ...publicEnv,
-    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     brevoApiKey: process.env.BREVO_API_KEY,
     emailFrom: process.env.EMAIL_FROM,
     emailFromName: process.env.EMAIL_FROM_NAME,
     sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   }
 
-  const missing = [...supabaseAdminKeys, ...emailKeys].filter((key) => !process.env[key])
+  const missing = emailKeys.filter((key) => !process.env[key])
   if (missing.length > 0) {
     throw new MissingEnvironmentError(missing)
   }
@@ -63,12 +58,10 @@ export function getSupabaseAdminEnv() {
   const publicEnv = getPublicEnv()
   const env = {
     ...publicEnv,
-    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    supabaseServiceRoleKey: process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY,
   }
-  const missing = supabaseAdminKeys.filter((key) => !process.env[key])
-
-  if (missing.length > 0) {
-    throw new MissingEnvironmentError(missing)
+  if (!env.supabaseServiceRoleKey) {
+    throw new MissingEnvironmentError(["SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY)"])
   }
 
   return env as typeof env & { supabaseServiceRoleKey: string }
@@ -78,8 +71,8 @@ export function getOptionalServerEnv() {
   return {
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseServiceRoleKey: process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY,
     brevoApiKey: process.env.BREVO_API_KEY,
     emailFrom: process.env.EMAIL_FROM,
     emailFromName: process.env.EMAIL_FROM_NAME,

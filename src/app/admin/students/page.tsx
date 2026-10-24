@@ -1,3 +1,4 @@
+import { RecordPagination } from "@/components/admin/record-pagination"
 import { AdminTable, PageHeader, SetupNotice } from "@/components/admin/admin-ui"
 import { AssignCourseDialog, CreateStudentDialog, StudentRowActions, StudentStatusButton } from "@/components/admin/student-actions"
 import { getAdminWorkspaceData } from "@/features/admin/data"
@@ -7,8 +8,8 @@ export const metadata = {
   title: "Students | Builtbyskills Admin",
 }
 
-export default async function AdminStudentsPage() {
-  const result = await getAdminWorkspaceData()
+export default async function AdminStudentsPage({ searchParams }: { searchParams?: Promise<{ page?: string }> } = {}) {
+  const result = await getAdminWorkspaceData({ entity: "students", page: (await searchParams)?.page })
   if (!result.ok) return <SetupNotice message={result.message} />
 
   const studentOptions = result.data.students.map((student) => ({ value: student.id, label: `${student.full_name} (${student.email})` }))
@@ -37,6 +38,7 @@ export default async function AdminStudentsPage() {
           <StudentRowActions key={student.id} student={student} />,
         ])}
       />
+      <RecordPagination {...result.data.pagination} />
     </>
   )
 }

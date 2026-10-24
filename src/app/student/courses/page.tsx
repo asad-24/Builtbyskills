@@ -27,7 +27,7 @@ export default async function StudentCoursesPage() {
             <StatusBadge key={enrollment.id}>{enrollment.status}</StatusBadge>,
             formatDate(enrollment.starts_at),
             formatDate(enrollment.expires_at),
-            lesson ? <Button key={lesson.id} asChild size="sm"><Link href={`/student/lessons/${lesson.id}`}>Open</Link></Button> : enrollmentIsActive(enrollment) ? "No published lessons are available yet." : "Course access is not currently active.",
+            enrollmentIsActive(enrollment) && enrollment.course?.status === "published" ? <div key={enrollment.id} className="flex flex-wrap gap-2"><Button asChild size="sm"><Link href={`/student/courses/${enrollment.course_id}`}>Open course</Link></Button>{lesson ? <Button asChild size="sm" variant="outline"><Link href={`/student/lessons/${lesson.id}`}>Open</Link></Button> : <span className="text-sm text-slate-600">No published lessons are available yet.</span>}</div> : "Course access is not currently active.",
           ]
         })}
       />

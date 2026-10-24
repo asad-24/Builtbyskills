@@ -17,7 +17,7 @@ const published = { id: "available", status: "published", position: 2 }
 const draft = { id: "hidden-draft", status: "draft", position: 0 }
 const archived = { id: "hidden-archive", status: "archived", position: 1 }
 function enrollment(sections: SectionWithLessons[], overrides = {}) {
-  return { id: "enrollment", ...active, course: { title: "Course", course_sections: sections }, ...overrides }
+  return { id: "enrollment", ...active, course_id: "course", course: { status: "published", title: "Course", course_sections: sections }, ...overrides }
 }
 function data(enrollments: ReturnType<typeof enrollment>[]) {
   vi.mocked(getStudentDashboardData).mockResolvedValue({ ok: true, data: { profile: { full_name: "Student" }, enrollments, progress: [], liveClasses: [], announcements: [], payments: [] } } as never)

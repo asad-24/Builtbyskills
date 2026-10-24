@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { AdminTable, PageHeader, SetupNotice, StatusBadge } from "@/components/admin/admin-ui"
 import { getInstructorDashboardData } from "@/features/instructor/data"
 import { formatDate } from "@/lib/format"
@@ -13,7 +14,7 @@ export default async function InstructorLiveClassesPage() {
   return (
     <>
       <PageHeader title="Live Classes" description="Live sessions connected to your instructor profile." />
-      <AdminTable columns={["Title", "Course", "Provider", "Starts", "Status"]} rows={result.data.liveClasses.map((item) => [item.title, item.course?.title ?? "Course", item.meeting_provider, formatDate(item.starts_at), <StatusBadge key={item.id}>{item.status}</StatusBadge>])} />
+      <AdminTable columns={["Title", "Course", "Provider", "Starts", "Status", "Manage"]} rows={result.data.liveClasses.map((item) => [item.title, item.course?.title ?? "Course", item.meeting_provider, formatDate(item.starts_at), <StatusBadge key={item.id}>{item.status}</StatusBadge>, <Link key={`manage-${item.id}`} href={`/instructor/courses/${item.course_id}`} className="font-medium underline">Manage class</Link>])} />
     </>
   )
 }

@@ -1,3 +1,4 @@
+import { RecordPagination } from "@/components/admin/record-pagination"
 import Link from "next/link"
 
 import { AdminTable, BuilderLink, PageHeader, SetupNotice, StatusBadge } from "@/components/admin/admin-ui"
@@ -9,8 +10,8 @@ export const metadata = {
   title: "Courses | Builtbyskills Admin",
 }
 
-export default async function AdminCoursesPage() {
-  const result = await getAdminWorkspaceData()
+export default async function AdminCoursesPage({ searchParams }: { searchParams?: Promise<{ page?: string }> } = {}) {
+  const result = await getAdminWorkspaceData({ entity: "courses", page: (await searchParams)?.page })
   if (!result.ok) return <SetupNotice message={result.message} />
 
   const instructorOptions = [
@@ -37,10 +38,12 @@ export default async function AdminCoursesPage() {
           course.featured ? "Yes" : "No",
           <div key={course.id} className="flex gap-2">
             <BuilderLink id={course.id} />
+            <Link href={`/admin/course-links/${course.id}`} className="inline-flex items-center rounded-lg border border-slate-200 px-3 text-sm font-medium">Classes & recordings</Link>
             <DeleteCourse id={course.id} title={course.title} />
           </div>,
         ])}
       />
+      <RecordPagination {...result.data.pagination} />
     </>
   )
 }

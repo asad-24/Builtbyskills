@@ -6,9 +6,11 @@ export type SupabaseChainable = {
   update: Mock
   delete: Mock
   upsert: Mock
+  in: Mock
   eq: Mock
   or: Mock
   not: Mock
+  range: Mock
   limit: Mock
   order: Mock
   single: Mock
@@ -19,8 +21,10 @@ export type SupabaseChainable = {
 
 export type SupabaseMock = {
   from: Mock
+  rpc: Mock
   storage: { from: Mock; info: Mock }
   auth: {
+    signUp: Mock
     signInWithPassword: Mock
     getUser: Mock
     signOut: Mock
@@ -53,9 +57,11 @@ export function createSupabaseMock(): SupabaseMockFactory {
       update: vi.fn(() => chain),
       delete: vi.fn(() => chain),
       upsert: vi.fn(() => chain),
+      in: vi.fn(() => chain),
       eq: vi.fn(() => chain),
       or: vi.fn(() => chain),
       not: vi.fn(() => chain),
+      range: vi.fn(() => chain),
       limit: vi.fn(() => chain),
       order: vi.fn(() => chain),
       single: vi.fn().mockResolvedValue({ data: null, error: null }),
@@ -73,6 +79,7 @@ export function createSupabaseMock(): SupabaseMockFactory {
 
   const storageInfo = vi.fn().mockResolvedValue({ data: { id: "uploaded-receipt" }, error: null })
   const mock: SupabaseMock = {
+    rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
     storage: { from: vi.fn(() => ({ info: storageInfo })), info: storageInfo },
     from: vi.fn((table: string) => {
       if (!tableChains.has(table)) {
@@ -81,6 +88,7 @@ export function createSupabaseMock(): SupabaseMockFactory {
       return tableChains.get(table)!.chain
     }),
     auth: {
+      signUp: vi.fn().mockResolvedValue({ data: { session: null, user: { id: "new-student" } }, error: null }),
       signInWithPassword: vi.fn().mockResolvedValue({ error: null }),
       getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
       signOut: vi.fn().mockResolvedValue({ error: null }),

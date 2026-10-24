@@ -34,6 +34,7 @@ export default async function LoginPage({
             {error ? <p className="text-sm font-medium text-rose-700">{error}</p> : null}
             <Button type="submit">Sign in</Button>
           </form>
+          <p className="mt-5 text-sm text-slate-600">New student? <Link href="/register" className="font-semibold underline">Create an account</Link></p>
           <Link href="/forgot-password" className="mt-4 inline-block text-sm font-medium text-lime-700 hover:underline">
             Forgot password?
           </Link>

@@ -302,7 +302,19 @@ begin
     ('empty interval', now(), now(), false),
     ('reversed interval', now() + interval '1 second', now() - interval '1 second', false)
   ) as cases(label, starts_at, expires_at, usable) loop
-    update public.enrollments set starts_at = bounds.starts_at, expires_at = bounds.expires_at where student_id = s;
+    -- Reproduce malformed PRE-MIGRATION rows for read-only replay tests.
+    -- New portal writes reject these intervals; keep the guard active while
+    -- exercising approval itself, and bypass it only for legacy fixture setup.
+    if bounds.expires_at <= bounds.starts_at and exists (
+      select 1 from pg_trigger where tgrelid='public.enrollments'::regclass
+        and tgname='enrollments_guard_participants'
+    ) then
+      alter table public.enrollments disable trigger enrollments_guard_participants;
+      update public.enrollments set starts_at = bounds.starts_at, expires_at = bounds.expires_at where student_id = s;
+      alter table public.enrollments enable trigger enrollments_guard_participants;
+    else
+      update public.enrollments set starts_at = bounds.starts_at, expires_at = bounds.expires_at where student_id = s;
+    end if;
     perform pg_temp.check_replay(p, a, bounds.label, case when bounds.usable then null else 'incomplete_approval' end);
   end loop;
   update public.enrollments set starts_at = null, expires_at = null where student_id = s;

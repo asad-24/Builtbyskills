@@ -1,6 +1,7 @@
 export function formatDate(value?: string | null) {
   if (!value) return "Not set"
   return new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Karachi",
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value))

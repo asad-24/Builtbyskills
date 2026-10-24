@@ -47,7 +47,7 @@ describe("auth actions", () => {
         data: { user: { id: "user-1" } },
       })
       mock.from("profiles").single.mockResolvedValue({
-        data: { role: "student" },
+        data: { role: "student", status: "active" },
         error: null,
       })
       vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as any)
@@ -68,7 +68,7 @@ describe("auth actions", () => {
         data: { user: { id: "user-2" } },
       })
       mock.from("profiles").single.mockResolvedValue({
-        data: { role: "instructor" },
+        data: { role: "instructor", status: "active" },
         error: null,
       })
       vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as any)
@@ -89,7 +89,7 @@ describe("auth actions", () => {
         data: { user: { id: "user-3" } },
       })
       mock.from("profiles").single.mockResolvedValue({
-        data: { role: "super_admin" },
+        data: { role: "super_admin", status: "active" },
         error: null,
       })
       vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as any)

@@ -5,7 +5,8 @@ const emptyToUndefined = (value: unknown) =>
 
 const dateTimeToIso = (value: unknown) => {
   if (typeof value !== "string" || value.trim() === "") return undefined
-  const date = new Date(value)
+  const localDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(value)
+  const date = new Date(localDateTime ? `${value}+05:00` : value)
   return Number.isNaN(date.getTime()) ? value : date.toISOString()
 }
 

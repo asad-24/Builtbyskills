@@ -679,6 +679,7 @@ export async function assignCourseAction(_: ActionState | undefined, formData: F
     await audit("enrollment.assigned", "enrollment", data.id, parsed)
     revalidatePath("/admin/students")
     revalidatePath("/admin/enrollments")
+    revalidatePath("/student", "layout")
     return ok("Course assignment saved.")
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Course assignment failed.")

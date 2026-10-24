@@ -5,7 +5,7 @@ import { redirect } from "next/navigation"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 
 export async function signInAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "")
+  const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
   const supabase = await createSupabaseServerClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -19,19 +19,24 @@ export async function signInAction(formData: FormData) {
     redirect("/login?error=Session+not+established")
   }
 
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role,status")
     .eq("auth_user_id", user.id)
     .single()
 
-  if (profile?.role === "instructor") {
-    redirect("/instructor")
-  } else if (profile?.role === "student") {
-    redirect("/student")
-  } else {
-    redirect("/admin")
+  if (!profile) {
+    const { error } = await supabase.rpc("ensure_student_profile")
+    if (!error) {
+      const result = await supabase.from("profiles").select("role,status").eq("auth_user_id", user.id).single()
+      profile = result.data
+    }
   }
+  if (!profile || profile.status !== "active" || !["instructor", "student", "super_admin"].includes(profile.role)) {
+    await supabase.auth.signOut()
+    redirect("/login?error=Account+setup+is+incomplete+or+access+is+disabled.+Please+contact+the+academy.")
+  }
+  redirect(profile.role === "instructor" ? "/instructor" : profile.role === "student" ? "/student" : "/admin")
 }
 
 export async function signOutAction() {
@@ -41,7 +46,7 @@ export async function signOutAction() {
 }
 
 export async function forgotPasswordAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "")
+  const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const supabase = await createSupabaseServerClient({ passwordRecovery: true })
   const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/reset-password`
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
