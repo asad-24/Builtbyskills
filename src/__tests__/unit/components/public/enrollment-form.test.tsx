@@ -25,8 +25,7 @@ async function fillDetails() {
   const user = userEvent.setup()
   await user.type(screen.getByLabelText("Full name"), " A ")
   await user.type(screen.getByLabelText("Email"), "a@example.com")
-  await user.type(screen.getByLabelText("Phone number"), "+92 300 1234567")
-  await user.type(screen.getByLabelText("WhatsApp number (Optional)"), "0300-1234567")
+  await user.type(screen.getByLabelText("WhatsApp number"), "+92 300 1234567")
   await user.selectOptions(screen.getByLabelText("Selected course"), courseId)
   await user.click(screen.getByRole("radio", { name: "Bank" }))
   return user
@@ -48,7 +47,7 @@ describe("EnrollmentForm validation", () => {
     setup()
     await userEvent.click(screen.getByRole("button", { name: "Submit enrollment" }))
     expect(submitEnrollmentAction).not.toHaveBeenCalled()
-    for (const message of ["Please enter your name.", "Please enter a valid email.", "Please enter your phone number.",
+    for (const message of ["Please enter your name.", "Please enter a valid email.", "Please enter your WhatsApp number.",
       "Please select a course.", "Please select a payment method.", "Please upload your payment screenshot."]) {
       expect(screen.getByText(message)).toBeInTheDocument()
     }
@@ -59,8 +58,7 @@ describe("EnrollmentForm validation", () => {
   it.each([
     ["Full name", "   ", "Please enter your name."],
     ["Email", "invalid", "Please enter a valid email."],
-    ["Phone number", "1", "Please enter a valid phone number."],
-    ["WhatsApp number (Optional)", "1", "Please enter a valid WhatsApp number."],
+    ["WhatsApp number", "1", "Please enter a valid WhatsApp number."],
     ["Selected course", "", "Please select a course."],
   ])("blocks invalid %s and focuses the field", async (label, value, message) => {
     const { container } = setup()
@@ -74,18 +72,20 @@ describe("EnrollmentForm validation", () => {
     expect(screen.getByLabelText(label)).toHaveFocus()
   })
 
-  it.each(["", "   ", "0300-1234567"])("submits with WhatsApp %j while keeping other required inputs", async whatsapp => {
+  it.each(["0300-1234567", "+92 300 1234567"])("submits the single required WhatsApp number %j for both existing contact fields", async whatsapp => {
     setup()
     const user = await fillDetails()
-    const input = screen.getByLabelText("WhatsApp number (Optional)")
-    expect(input).not.toBeRequired()
-    for (const label of ["Full name", "Email", "Phone number", "Selected course"]) expect(screen.getByLabelText(label)).toBeRequired()
+    const input = screen.getByLabelText("WhatsApp number")
+    expect(screen.queryByLabelText("WhatsApp number (Optional)")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Phone number")).not.toBeInTheDocument()
+    for (const label of ["Full name", "Email", "WhatsApp number", "Selected course"]) expect(screen.getByLabelText(label)).toBeRequired()
     fireEvent.change(input, { target: { value: whatsapp } })
     await uploadReceipt()
     await waitFor(() => expect(screen.getByText("Payment screenshot uploaded.")).toBeInTheDocument())
     await user.click(screen.getByRole("button", { name: "Submit enrollment" }))
     await waitFor(() => expect(submitEnrollmentAction).toHaveBeenCalledOnce())
     expect(vi.mocked(submitEnrollmentAction).mock.calls[0][1].get("whatsapp")).toBe(whatsapp)
+    expect(vi.mocked(submitEnrollmentAction).mock.calls[0][1].get("phone")).toBe(whatsapp)
   })
 
   it("requires screenshot completion and accepts a one-character name with optional details empty", async () => {

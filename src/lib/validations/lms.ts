@@ -150,7 +150,7 @@ export const announcementSchema = z.object({
 export const enrollmentRequestSchema = z.object({
   full_name: z.string({ error: "Please enter your name." }).trim().min(1, "Please enter your name."),
   email: z.string({ error: "Please enter a valid email." }).trim().email("Please enter a valid email."),
-  phone: z.string({ error: "Please enter your phone number." }).trim().min(1, "Please enter your phone number.").min(7, "Please enter a valid phone number."),
+  phone: z.string({ error: "Please enter your WhatsApp number." }).trim().min(1, "Please enter your WhatsApp number.").min(7, "Please enter a valid WhatsApp number."),
   whatsapp: z.preprocess(emptyToUndefined, z.string({ error: "Please enter a valid WhatsApp number." }).trim().min(7, "Please enter a valid WhatsApp number.").optional()),
   city: z.preprocess(emptyToUndefined, z.string().trim().optional()),
   course_id: z.string({ error: "Please select a course." }).uuid("Please select a course."),

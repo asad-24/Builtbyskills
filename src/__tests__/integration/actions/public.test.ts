@@ -100,8 +100,8 @@ describe("public actions", () => {
     it.each([
       ["full_name", "   ", "Please enter your name."],
       ["email", "invalid", "Please enter a valid email."],
-      ["phone", "", "Please enter your phone number."],
-      ["phone", "1", "Please enter a valid phone number."],
+      ["phone", "", "Please enter your WhatsApp number."],
+      ["phone", "1", "Please enter a valid WhatsApp number."],
       ["whatsapp", "1", "Please enter a valid WhatsApp number."],
       ["course_id", "", "Please select a course."],
       ["payment_method_id", "", "Please select a payment method."],

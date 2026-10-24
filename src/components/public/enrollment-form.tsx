@@ -13,7 +13,7 @@ type Props = {
   methods: React.ComponentProps<typeof PaymentMethodSelector>["methods"]
   initialCourseId?: string
 }
-const fieldOrder = ["full_name", "email", "phone", "whatsapp", "course_id", "payment_method_id", "screenshot_path"]
+const fieldOrder = ["full_name", "email", "phone", "course_id", "payment_method_id", "screenshot_path"]
 const inputClass = "h-10 rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-lime-500 focus:ring-3 focus:ring-lime-200"
 
 export function EnrollmentForm({ courses, methods, initialCourseId = "" }: Props) {
@@ -74,15 +74,17 @@ export function EnrollmentForm({ courses, methods, initialCourseId = "" }: Props
     }}>
       {([
         ["full_name", "Full name", "text"], ["email", "Email", "email"],
-        ["phone", "Phone number", "tel"], ["whatsapp", "WhatsApp number (Optional)", "tel"],
+        ["phone", "WhatsApp number", "tel"],
         ["city", "City (optional)", "text"],
       ] as const).map(([name, label, type]) => (
         <div key={name} className="grid gap-1.5 text-sm font-medium text-slate-700">
           <label htmlFor={`enrollment-${name}`}>{label}</label>
-          <input id={`enrollment-${name}`} name={name} type={type} required={name !== "city" && name !== "whatsapp"} value={values[name] ?? ""} onChange={event => updateValue(name, event.target.value)} className={inputClass} {...errorProps(name)} />
+          <input id={`enrollment-${name}`} name={name} type={type} required={name !== "city"} value={values[name] ?? ""} onChange={event => updateValue(name, event.target.value)} className={inputClass} {...errorProps(name)} />
           {errorMessage(name)}
         </div>
       ))}
+      {/* Preserve both existing contact fields using the single required number. */}
+      <input type="hidden" name="whatsapp" value={values.phone ?? ""} />
       <div className="grid gap-1.5 text-sm font-medium text-slate-700">
         <label htmlFor="enrollment-course">Selected course</label>
         <select id="enrollment-course" name="course_id" required value={values.course_id ?? ""} onChange={event => updateValue("course_id", event.target.value)} className={inputClass} {...errorProps("course_id")}>
