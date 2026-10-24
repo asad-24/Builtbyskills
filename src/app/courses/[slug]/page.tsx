@@ -48,7 +48,11 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
   const requirements = course.requirements?.length ? course.requirements : ["A laptop or desktop computer", "A reliable internet connection", "Time to practise between sessions"]
 
   return (
-    <PublicPageShell>
+    <PublicPageShell floatingAction={
+      <Button asChild className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-1/2 z-40 min-h-14 w-40 -translate-x-1/2 rounded-full shadow-lg">
+        <Link href={`/enroll?course=${course.id}`}>Enroll Now<ArrowRight className="ml-2 size-4" /></Link>
+      </Button>
+    }>
       <main>
         <section className="bg-[#02062C] px-4 pb-16 pt-8 text-white sm:px-6 lg:pb-24">
           <div className="mx-auto max-w-7xl">
@@ -76,6 +80,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
             </div>
           </div>
         </section>
+
+        <section id="enrollment" className="px-4 py-16 text-center sm:px-6 lg:py-20"><div className="mx-auto max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Take the next step</p><h2 className="mt-4 text-3xl font-bold tracking-tight text-[#02062C] sm:text-4xl">Ready to learn {title.replace(/ (Success |Complete )?Course$/, "")}?</h2><p className="mt-5 text-sm leading-7 text-slate-600">Start your enrollment, choose your payment method, and submit your details for review.</p></div></section>
 
         <div className="mx-auto grid max-w-7xl gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-16 lg:py-20">
           <div className="min-w-0">
@@ -111,7 +117,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
               <p className="mt-4 text-sm leading-7 text-slate-600">Practical training, projects, and support as you develop your skills.</p>
               <div className="my-6 border-y border-slate-200 py-5"><p className="text-xs text-slate-500">Course fee</p><p className="mt-1 text-3xl font-bold tracking-tight text-[#02062C]">{formatMoney(course.price, course.currency)}</p></div>
               <ul className="grid gap-4 text-sm text-slate-600">{["Practical lessons and projects", "Course learning resources", "Free Fiverr mentorship", "Client outreach guidance"].map(item => <li key={item} className="flex gap-3"><Check className="size-4 shrink-0 text-[#9B7300]" />{item}</li>)}</ul>
-              <p className="mt-6 text-xs leading-6 text-slate-500">Review the curriculum, then continue to the enrollment form below.</p>
+              <p className="mt-6 text-xs leading-6 text-slate-500">Review the curriculum, then select Enroll Now to continue to the enrollment form.</p>
               <Link href="/contact" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#02062C]">Have a question? Talk to us<ArrowUpRight className="size-4" /></Link>
             </div>
           </aside>
@@ -119,7 +125,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
 
         <section className="bg-[#02062C] px-4 py-12 text-white sm:px-6" aria-labelledby="mentorship-heading"><div className="mx-auto grid max-w-7xl gap-6 md:grid-cols-[1fr_1fr] md:items-center"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#FDBE01]">Included with your course</p><h2 id="mentorship-heading" className="mt-3 text-3xl font-bold tracking-tight">Your skill. Your first client. Your next chapter.</h2></div><p className="text-sm leading-8 text-white/70">Continue with free Fiverr mentorship: learn to present your portfolio, create a focused service offer, communicate with clients, and manage paid projects.</p></div></section>
 
-        <section id="enrollment" className="px-4 py-16 text-center sm:px-6 lg:py-20"><div className="mx-auto max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Take the next step</p><h2 className="mt-4 text-3xl font-bold tracking-tight text-[#02062C] sm:text-4xl">Ready to learn {title.replace(/ (Success |Complete )?Course$/, "")}?</h2><p className="mt-5 text-sm leading-7 text-slate-600">Start your enrollment, choose your payment method, and submit your details for review.</p><Button asChild className="mt-7 min-h-12 rounded-full px-8"><Link href={`/enroll?course=${course.id}`}>Enroll Now<ArrowRight className="ml-2 size-4" /></Link></Button></div></section>
+
       </main>
     </PublicPageShell>
   )

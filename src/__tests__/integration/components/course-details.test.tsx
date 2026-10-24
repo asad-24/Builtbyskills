@@ -18,14 +18,13 @@ describe("Track details and enrollment journey", () => {
     vi.mocked(getPublicCourses).mockResolvedValue({ ok: true, data: [course] } as never)
     vi.mocked(getPublicCourseBySlug).mockResolvedValue({ ok: true, data: course } as never)
   })
-  it("resolves a short track link to its published course and shows curriculum before enrollment", async () => {
+  it("resolves a short track link and keeps enrollment linked to the published course", async () => {
     render(await CourseDetailPage({ params: Promise.resolve({ slug: "shopify" }) }))
     expect(getPublicCourseBySlug).toHaveBeenCalledWith("shopify-18ffb88a")
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Shopify Complete Course")
     expect(screen.getByText("Product selection and competitor analysis")).toBeInTheDocument()
     expect(screen.getByText("Your first store")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Enroll Now" })).toHaveAttribute("href", "/enroll?course=published-shopify")
-    expect(screen.getByRole("link", { name: "Enroll Now" }).closest("section")).toHaveAttribute("id", "enrollment")
   })
   it("does not expose a track without a published course", async () => {
     vi.mocked(getPublicCourses).mockResolvedValue({ ok: true, data: [] })

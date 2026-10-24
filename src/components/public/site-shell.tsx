@@ -3,6 +3,7 @@ import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { WhatsAppButton } from "@/components/public/whatsapp-button"
+import { cn } from "@/lib/utils"
 
 const links = [
   { href: "/", label: "Home" },
@@ -35,18 +36,25 @@ export function PublicHeader() {
   )
 }
 
-export function PublicPageShell({ children }: { children: React.ReactNode }) {
+export function PublicPageShell({ children, floatingAction }: {
+  children: React.ReactNode
+  floatingAction?: React.ReactNode
+}) {
   return (
     <div className="bbs-theme min-h-screen bg-white text-slate-950">
       <PublicHeader />
       {children}
-      <footer className="border-t border-slate-200 bg-slate-950 px-4 py-10 text-white sm:px-6">
+      <footer className={cn(
+        "border-t border-slate-200 bg-slate-950 px-4 py-10 text-white sm:px-6",
+        floatingAction && "pb-[calc(6rem+env(safe-area-inset-bottom))]"
+      )}>
         <div className="mx-auto max-w-7xl">
           <p className="text-xl font-semibold">Learn a skill. Get clients. Build your own business. — Builtbyskills</p>
           <p className="mt-3 text-sm text-white/60">Practical digital skills academy with live classes, mentorship, and guided enrollment.</p>
         </div>
       </footer>
       <WhatsAppButton />
+      {floatingAction}
     </div>
   )
 }
