@@ -62,26 +62,33 @@ Existing legacy YouTube lessons remain compatible during rollout; their unlisted
 
 ## Vercel Deployment
 
-The application uses **one existing Supabase database** for admin, teachers, students, courses, and enrollments. A second Supabase project is not required for deployment.
+The application now targets **one selected Supabase project, `ajvtvbpqywxxclmdtnkr`**, for admin, teachers, students, courses, and enrollments. The previous `tnnkslgihwofhvigfzef` project's environment configuration is backed up locally in gitignored `.env.local.previous-project` / `.env.vercel.previous-project` files. Changing the active project does not transfer its accounts, enrollments, payment methods, or files.
 
-1. The local, gitignored `.env.vercel` contains the existing project's URL, matching public/server keys, existing Brevo settings, and `NEXT_PUBLIC_SITE_URL=https://builtbyskills.vercel.app`. Import its values into the Vercel project's environment settings. Both new and compatibility key names deliberately contain the same existing project's keys, so older names cannot select another project. Keep this file out of Git.
-2. On the existing database, apply the pending `supabase/migrations/202610240001_course_portals.sql` migration before deploying the new portals. For the SQL Editor, [the ready-to-run deployment file](supabase/deploy/course-portals-existing.sql) wraps that migration in a single transaction. Run the whole file once in the existing project's SQL Editor. The app's API key cannot apply schema migrations; connected Supabase project tools or its PostgreSQL connection can also apply the migration. Do not replay the initial schema or development seed on the existing database. See [course portal deployment details](docs/course-portals-implementation.md).
-3. In that same Supabase project's Auth settings, set the production Site URL and allow `https://builtbyskills.vercel.app/auth/confirm`, `https://builtbyskills.vercel.app/auth/callback`, and `https://builtbyskills.vercel.app/reset-password`. Keep the existing email/SMTP setup. For a different live domain, update these URLs and `NEXT_PUBLIC_SITE_URL` together.
-4. Deploy the updated repository after saving the Vercel environment values; existing deployments do not acquire changed variables until redeployed. Check registration/login, teacher course assignment, publishing, approved enrollment, and student class/recording access on the resulting deployment.
+1. The local, gitignored `.env.local` and `.env.vercel` contain the selected project's URL/public key. Add **that same project's** server-only secret to `SUPABASE_SECRET_KEY` in both files before deploying. The old project's server keys were removed deliberately. `SUPABASE_SERVICE_ROLE_KEY` is an optional compatibility alias and must be empty or belong to this same project. Existing Brevo application-email settings are retained; the production site URL remains `https://builtbyskills.vercel.app`.
+2. In the selected project's Supabase SQL Editor, run the complete [new-project initialization file](supabase/deploy/initialize-new-project.sql) once. It applies all 13 ordered migrations atomically, records their versions, grants Data API access through RLS, and adds the five current courses at PKR 10,000 each with 20 curriculum sections. It refuses an existing LMS schema and does not create sample users, enrollments, or payment accounts. Do not run `supabase/seed.sql`, which contains development data. The [single course-portal upgrade file](supabase/deploy/course-portals-existing.sql) is only for an older database that already has the preceding migrations; it cannot initialize this new project.
+3. Create the first administrator using the steps below. Add the academy's real payment methods through the admin panel. Previous accounts/enrollments/files must be explicitly restored/imported or recreated; they are not included in the starter catalog.
+4. In the selected Supabase project's Auth settings, set the production Site URL and allow `https://builtbyskills.vercel.app/auth/confirm`, `https://builtbyskills.vercel.app/auth/callback`, and `https://builtbyskills.vercel.app/reset-password`. Configure Auth's email/SMTP sender in this new project as well; an application Brevo API key does not configure Supabase Auth SMTP. For a different live domain, update these URLs and `NEXT_PUBLIC_SITE_URL` together.
+5. Import the completed `.env.vercel` values into the Vercel project's environment settings and deploy the updated repository. Existing deployments do not acquire changed variables until redeployed. Check registration/login, teacher course assignment, publishing, approved enrollment, and student class/recording access on the resulting deployment. Keep environment files and backups out of Git.
 
 The class/recording link features do not need R2 credentials. Private R2 lesson video uploads/playback additionally need the four server-only R2 variables described above; copy existing Vercel R2 settings if already configured. Database passwords and automated-test variables are not runtime requirements for Vercel.
 
 ## Admin Account Creation
 
-Create the first administrator in Supabase Auth, then insert or update the matching profile:
+In the selected project's **Authentication → Users**, create the first administrator with their real email and password and confirm the email. Copy that new Auth user's UUID, replace `AUTH_USER_UUID` below, and run this in the SQL Editor after initialization:
 
 ```sql
-update public.profiles
-set auth_user_id = 'AUTH_USER_UUID', role = 'super_admin', status = 'active'
-where email = 'admin@example.com';
+insert into public.profiles (auth_user_id, full_name, email, role, status)
+select id,
+       coalesce(nullif(raw_user_meta_data->>'full_name', ''), 'Builtbyskills Admin'),
+       email, 'super_admin', 'active'
+from auth.users
+where id = 'AUTH_USER_UUID'::uuid
+on conflict (auth_user_id) do update
+set role = 'super_admin', status = 'active'
+returning id, email, role, status;
 ```
 
-Use the real admin email in production.
+Confirm that the statement returns the intended active administrator, then sign in at `/login`. Existing users in another Supabase project do not automatically have accounts here. Never put the administrator's password in SQL files or source code.
 
 ## Verification
 

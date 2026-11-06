@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server"
 
 vi.mock("server-only", () => ({}))
-import { config } from "@/middleware"
+import { config } from "@/proxy"
 
 describe("middleware matcher (Next.js matcher utility, not a running server)", () => {
   it.each([

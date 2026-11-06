@@ -6,7 +6,7 @@ vi.mock("@supabase/ssr", () => ({ createServerClient: vi.fn() }))
 vi.mock("@/lib/env", () => ({ getPublicEnv: () => ({ supabaseUrl: "https://example.supabase.co", supabaseAnonKey: "anon" }) }))
 
 import { createServerClient } from "@supabase/ssr"
-import { middleware } from "@/middleware"
+import { proxy as middleware } from "@/proxy"
 
 const url = "http://localhost:3000/admin/course-builder/course-id"
 

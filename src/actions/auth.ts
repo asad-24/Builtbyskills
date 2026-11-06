@@ -1,6 +1,7 @@
 "use server"
 
 import { redirect } from "next/navigation"
+import { isAuthRetryableFetchError } from "@supabase/supabase-js"
 
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 
@@ -11,7 +12,10 @@ export async function signInAction(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`)
+    const message = isAuthRetryableFetchError(error)
+      ? "Sign-in is temporarily unavailable. Please try again shortly."
+      : error.message
+    redirect(`/login?error=${encodeURIComponent(message)}`)
   }
 
   const { data: { user } } = await supabase.auth.getUser()

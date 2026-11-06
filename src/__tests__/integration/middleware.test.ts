@@ -1,14 +1,9 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
+import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseMock } from "@/test/mocks/supabase"
 
-vi.mock("next/server", () => {
-  const next = vi.fn(() => ({ status: 200 }))
-  const redirect = vi.fn((url: URL) => ({
-    status: 302,
-    headers: new Headers({ Location: url.toString() }),
-  }))
-  return { NextResponse: { next, redirect } }
-})
+vi.spyOn(NextResponse, "next")
+vi.spyOn(NextResponse, "redirect")
 
 vi.mock("@supabase/ssr", () => ({
   createServerClient: vi.fn(),
@@ -23,17 +18,10 @@ vi.mock("@/lib/env", () => ({
 }))
 
 import { createServerClient } from "@supabase/ssr"
-import { NextResponse } from "next/server"
-import { middleware } from "@/middleware"
+import { proxy as middleware } from "@/proxy"
 
 function createMockRequest(pathname: string) {
-  return {
-    url: `http://localhost:3000${pathname}`,
-    nextUrl: { pathname },
-    cookies: {
-      getAll: () => [],
-    },
-  }
+  return new NextRequest(`http://localhost:3000${pathname}`)
 }
 
 describe("middleware", () => {
@@ -90,7 +78,7 @@ describe("middleware", () => {
     const response = await middleware(createMockRequest("/admin/courses") as any)
 
     expect(NextResponse.redirect).toHaveBeenCalled()
-    expect(response.status).toBe(302)
+    expect(response.status).toBe(307)
     expect(response.headers.get("Location")).toBe("http://localhost:3000/login")
   })
 
@@ -125,7 +113,7 @@ describe("middleware", () => {
     const response = await middleware(createMockRequest("/admin/courses") as any)
 
     expect(NextResponse.redirect).toHaveBeenCalled()
-    expect(response.status).toBe(302)
+    expect(response.status).toBe(307)
     expect(response.headers.get("Location")).toBe("http://localhost:3000/login")
   })
 

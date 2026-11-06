@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
+import { AuthRetryableFetchError } from "@supabase/supabase-js"
 import { createSupabaseMock } from "@/test/mocks/supabase"
 
 vi.mock("server-only", () => ({}))
@@ -121,6 +122,21 @@ describe("auth actions", () => {
       expect(redirect).toHaveBeenCalledWith(
         "/login?error=Invalid%20login%20credentials"
       )
+    })
+
+    it.each([
+      new AuthRetryableFetchError("fetch failed", 0),
+      new AuthRetryableFetchError("Internal upstream service details", 503),
+    ])("shows a friendly service-unavailable message for network/provider failure: %s", async error => {
+      const { mock } = createSupabaseMock()
+      mock.auth.signInWithPassword.mockResolvedValue({ error })
+      vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as never)
+
+      const target = `/login?error=${encodeURIComponent("Sign-in is temporarily unavailable. Please try again shortly.")}`
+      await expect(signInAction(createFormData({ email: "student@example.com", password: "synthetic-password" }))).rejects.toThrow(`REDIRECT:${target}`)
+      expect(redirect).toHaveBeenCalledWith(target)
+      expect(mock.auth.getUser).not.toHaveBeenCalled()
+      expect(mock.from).not.toHaveBeenCalled()
     })
 
     it("redirects to /login?error=Session+not+established when user is null", async () => {

@@ -25,20 +25,29 @@ function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.has(path) || path.startsWith("/courses/")
 }
 
-function redirectToLogin(request: NextRequest) {
-  if (request.method === "POST" && request.headers.has("next-action")) {
-    // Fetch actions need an action redirect, rather than an HTTP redirect to HTML.
-    return new NextResponse(null, {
-      status: 200,
-      headers: { "x-action-redirect": "/login;replace" },
-    })
+function copySessionResponse(source: NextResponse, target: NextResponse) {
+  source.cookies.getAll().forEach(cookie => target.cookies.set(cookie))
+  for (const name of ["cache-control", "expires", "pragma"]) {
+    const value = source.headers.get(name)
+    if (value !== null) target.headers.set(name, value)
   }
-  return NextResponse.redirect(new URL("/login", request.url))
+  return target
 }
 
-export async function middleware(request: NextRequest) {
+function redirectToLogin(request: NextRequest, response: NextResponse) {
+  if (request.method === "POST" && request.headers.has("next-action")) {
+    // Fetch actions need an action redirect, rather than an HTTP redirect to HTML.
+    return copySessionResponse(response, new NextResponse(null, {
+      status: 200,
+      headers: { "x-action-redirect": "/login;replace" },
+    }))
+  }
+  return copySessionResponse(response, NextResponse.redirect(new URL("/login", request.url)))
+}
+
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
-  const response = NextResponse.next()
+  let response = NextResponse.next({ request })
 
   if (pathname.startsWith("/api/")) {
     return response
@@ -55,10 +64,15 @@ export async function middleware(request: NextRequest) {
       getAll() {
         return request.cookies.getAll()
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headers = {}) {
+        // Forward refreshed tokens to this render as well as to the browser.
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        response = copySessionResponse(response, NextResponse.next({ request }))
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options)
         })
+        // SSR sends these only on the first cookie write; retain them on later writes.
+        Object.entries(headers).forEach(([name, value]) => response.headers.set(name, value))
       },
     },
   })
@@ -66,7 +80,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return redirectToLogin(request)
+    return redirectToLogin(request, response)
   }
 
   const { data: profile } = await supabase
@@ -76,15 +90,15 @@ export async function middleware(request: NextRequest) {
     .single()
 
   if (pathname.startsWith("/admin") && profile?.role !== "super_admin") {
-    return redirectToLogin(request)
+    return redirectToLogin(request, response)
   }
 
   if (pathname.startsWith("/instructor") && profile?.role !== "instructor") {
-    return redirectToLogin(request)
+    return redirectToLogin(request, response)
   }
 
   if (pathname.startsWith("/student") && profile?.role !== "student") {
-    return redirectToLogin(request)
+    return redirectToLogin(request, response)
   }
 
   return response
