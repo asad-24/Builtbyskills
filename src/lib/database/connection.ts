@@ -7,7 +7,7 @@ const cache = globalThis as typeof globalThis & { lmsMongo?: { uri: string; clie
 export function mongoClient() {
   const uri = process.env.MONGODB_URI
   if (!uri) throw new MissingEnvironmentError(["MONGODB_URI"])
-  if (!/^mongodb(?:\+srv)?:\/\//.test(uri)) throw new Error("Invalid MongoDB connection configuration.")
+  if (!/^mongodb(?:\+srv)?:\/\//.test(uri)) throw Object.assign(new Error("Invalid MongoDB connection configuration."), { code: "DATABASE_URI_INVALID" })
   if (!cache.lmsMongo || cache.lmsMongo.uri !== uri) {
     cache.lmsMongo = { uri, client: new MongoClient(uri, {
       maxPoolSize: 10, minPoolSize: 0, maxIdleTimeMS: 60_000,

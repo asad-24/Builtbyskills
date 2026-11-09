@@ -6,10 +6,12 @@ import { mongoDb, transaction } from "./connection"
 import { scope, type Access } from "./access"
 import { ensureIndexes, tables, type Table } from "./schema"
 import { validateWrite, cascadeDelete, syncInstructor } from "./writes"
+import { reportDatabaseError } from "./diagnostics"
 
 export type Row = Record<string, any>
 export type QueryResult<Single extends boolean = false> = { data: (Single extends true ? any : any[]) | null; error: { code: string; message: string } | null; count: number | null }
-export function databaseError(error: unknown) {
+export function databaseError(error: unknown, context?: { operation?: string; collection?: string }) {
+  reportDatabaseError(error, context)
   const e = error as { code?: string | number }
   const code = e?.code === 11000 ? "23505" : String(e?.code ?? "DATABASE_UNAVAILABLE")
   const messages: Record<string, string> = { "23505": "This record already exists.", "23503": "This record is still referenced or its parent is unavailable.", "42501": "You do not have access to this record.", "23514": "Invalid record details.", "STALE": "This record changed. Refresh and retry." }
@@ -117,7 +119,7 @@ export class Query<Single extends boolean = false> implements PromiseLike<QueryR
       await ensureIndexes()
       const data = this.action === "select" ? await this.execute() : await transaction((_db, session) => this.execute(session))
       return data
-    } catch (error) { return { data: null, error: databaseError(error), count: null } }
+    } catch (error) { return { data: null, error: databaseError(error, { operation: this.action, collection: this.table }), count: null } }
   }
   private async execute(session?: ClientSession): Promise<QueryResult<Single>> {
     const db = mongoDb(), collection = db.collection(this.table), options = { session }

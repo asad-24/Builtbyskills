@@ -27,6 +27,6 @@ export class DatabaseClient {
   from(table: string) { return new Query(table as Table, this.access) }
   async rpc(name: string, args: Record<string, any> = {}) {
     try { return { data: await runOperation(name, args, this.access), error: null } }
-    catch (error) { return { data: null, error: databaseError(error) } }
+    catch (error) { return { data: null, error: databaseError(error, { operation: "rpc" }) } }
   }
 }
