@@ -1,86 +1,43 @@
 "use client"
 
 import { useEffect, useRef, useState, type FormEvent } from "react"
-import { useRouter } from "next/navigation"
+import { createAuthClient } from "better-auth/react"
 import { Button } from "@/components/ui/button"
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
-import { establishRecoverySession, passwordDestination, passwordResetSchema, passwordUpdateError, recoveryError } from "@/lib/auth/password-recovery"
+import { passwordResetSchema, passwordUpdateError, recoveryError } from "@/lib/auth/password-recovery"
 
-type RecoveryContext = { supabase: ReturnType<typeof createSupabaseBrowserClient>; userId: string }
-
+const authClient = createAuthClient()
 export function PasswordRecovery({ callback = false }: { callback?: boolean }) {
-  const router = useRouter()
-  const initialization = useRef<Promise<RecoveryContext> | null>(null)
+  const [token, setToken] = useState<string | null>(null)
   const submitting = useRef(false)
-  const [context, setContext] = useState<RecoveryContext | null>(null)
+  const [context, setContext] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [destination, setDestination] = useState<string | null>(null)
-
+  const initialized = useRef(false)
   useEffect(() => {
-    let cancelled = false
-    // Share one exchange promise through React Strict Mode effect replays.
-    if (!initialization.current) {
-      initialization.current = (async () => {
-        const url = new URL(window.location.href)
-        try {
-          const supabase = createSupabaseBrowserClient(true)
-          const userId = await establishRecoverySession(supabase, url, callback)
-          return { supabase, userId }
-        } finally {
-          // The SDK may read window.location during PKCE exchange. Scrub only
-          // after processing settles, and never overwrite a newer navigation.
-          if (window.location.href === url.href) {
-            window.history.replaceState(window.history.state, "", url.pathname)
-          }
-        }
-      })()
-    }
-    void initialization.current.then((result) => {
-      if (cancelled) return
-      if (callback) router.replace("/reset-password")
-      else setContext(result)
-    }).catch(() => {
-      if (!cancelled) setError(recoveryError)
-    })
-    return () => { cancelled = true }
-  }, [callback, router])
-
+    if (initialized.current) return
+    initialized.current = true
+    const url = new URL(window.location.href)
+    const value = url.searchParams.get("token")
+    // The browser-only recovery URL is unavailable during server rendering.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!value || url.searchParams.has("error") || !/^[a-zA-Z0-9_-]{20,200}$/.test(value)) setError(recoveryError)
+    else { setToken(value); setContext(true) }
+    window.history.replaceState(window.history.state, "", callback ? "/reset-password" : url.pathname)
+  }, [callback])
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!context || submitting.current || destination) return
-    const form = event.currentTarget
-    const values = new FormData(form)
-    const parsed = passwordResetSchema.safeParse({
-      password: values.get("password"), confirmPassword: values.get("confirmPassword"),
-    })
-    if (!parsed.success) {
-      setError(parsed.error.issues[0].message)
-      return
-    }
-    submitting.current = true
-    setBusy(true)
-    setError(null)
+    if (!context || !token || submitting.current || destination) return
+    const form = event.currentTarget, values = new FormData(form)
+    const parsed = passwordResetSchema.safeParse({ password: values.get("password"), confirmPassword: values.get("confirmPassword") })
+    if (!parsed.success) { setError(parsed.error.issues[0].message); return }
+    submitting.current = true; setBusy(true); setError(null)
     try {
-      const { data: { user }, error: userError } = await context.supabase.auth.getUser()
-      if (userError || !user || user.id !== context.userId) {
-        setContext(null)
-        setError(recoveryError)
-        return
-      }
-      const { error: updateError } = await context.supabase.auth.updateUser({ password: parsed.data.password })
-      if (updateError) {
-        setError(passwordUpdateError)
-        return
-      }
-      form.reset()
-      setDestination(await passwordDestination(context.supabase, user.id))
-    } catch {
-      setError(passwordUpdateError)
-    } finally {
-      submitting.current = false
-      setBusy(false)
-    }
+      const result = await authClient.resetPassword({ newPassword: parsed.data.password, token })
+      if (result.error) { setError(recoveryError); return }
+      form.reset(); setToken(null); setDestination("/login")
+    } catch { setError(passwordUpdateError) }
+    finally { submitting.current = false; setBusy(false) }
   }
 
   return (

@@ -1,14 +1,14 @@
 import "server-only"
 import { requireRole } from "@/lib/auth/session"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createDatabaseServerClient } from "@/lib/database/server"
 import { AppForbiddenError } from "@/lib/errors"
 import { enrollmentIsActive } from "@/lib/permissions"
-import type { CourseWithCurriculum } from "@/types/lms"
+import type { CourseWithCurriculum, SectionWithLessons } from "@/types/lms"
 import type { CourseRecording, PortalClass } from "@/lib/courses/portal-schema"
 
 export async function requireCourseAccess(courseId: string, audience: "instructor" | "student" | "manager") {
   const profile = await requireRole(audience === "manager" ? ["instructor", "super_admin"] : [audience])
-  const supabase = await createSupabaseServerClient()
+  const supabase = await createDatabaseServerClient()
   if (profile.role === "instructor") {
     const { data, error } = await supabase.from("instructor_courses").select("id")
       .eq("course_id", courseId).eq("instructor_id", profile.id).maybeSingle()
@@ -26,8 +26,8 @@ export async function requireCourseAccess(courseId: string, audience: "instructo
 export async function getCourseWorkspace(courseId: string, audience: "instructor" | "student" | "manager") {
   const access = await requireCourseAccess(courseId, audience)
   const { supabase, course, profile } = access
-  // Session-bound clients preserve RLS even if a teacher assignment or student
-  // enrollment is revoked between the initial check and these queries.
+  // Each query checks the current teacher assignment or student enrollment
+  // again through the server-side MongoDB access scope.
   const student = profile.role === "student"
   const [classes, recordings, sections] = await Promise.all([
     supabase.from("live_classes").select(student ? "id,course_id,title,description,meeting_provider,starts_at,ends_at,status,updated_at" : "*").eq("course_id", courseId).order("starts_at"),
@@ -35,5 +35,5 @@ export async function getCourseWorkspace(courseId: string, audience: "instructor
     supabase.from("course_sections").select("id,title,description,position,lessons(id,title,status,position)").eq("course_id", courseId).order("position"),
   ])
   if (classes.error || recordings.error || sections.error) throw new Error("Unable to load course content. Confirm the portal migration has been applied.")
-  return { course, classes: classes.data as unknown as PortalClass[], recordings: recordings.data as unknown as CourseRecording[], sections: sections.data ?? [] }
+  return { course, classes: classes.data as unknown as PortalClass[], recordings: recordings.data as unknown as CourseRecording[], sections: (sections.data ?? []) as SectionWithLessons[] }
 }

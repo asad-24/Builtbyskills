@@ -9,7 +9,7 @@ import { requireAdmin } from "@/lib/auth/session"
 import { approvePayment } from "@/lib/payments/approve"
 import { getOptionalServerEnv } from "@/lib/env"
 import { sendTransactionalEmail } from "@/lib/email/send"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import {
   announcementSchema,
   assignCourseSchema,
@@ -67,7 +67,7 @@ function courseValidationMessage(issues: ReadonlyArray<{ path: PropertyKey[] }>)
 
 async function audit(action: string, entityType: string, entityId: string | null, metadata: Record<string, unknown> = {}) {
   const actor = await requireAdmin()
-  const supabase = createSupabaseAdminClient()
+  const supabase = createDatabaseAdminClient()
   await supabase.from("audit_logs").insert({
     actor_id: actor.id,
     action,
@@ -77,56 +77,10 @@ async function audit(action: string, entityType: string, entityId: string | null
   })
 }
 
-async function findAuthUserByEmail(
-  email: string,
-  supabaseUrl: string,
-  serviceRoleKey: string
-): Promise<{ id: string } | null> {
-  const baseUrl = supabaseUrl.replace(/\/$/, "")
-  const perPage = 50
-  let page = 1
-  let lastPage = 1
-
-  while (page <= lastPage) {
-    const url = `${baseUrl}/auth/v1/admin/users?page=${page}&per_page=${perPage}`
-
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 10000)
-
-    let response
-    try {
-      response = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          Authorization: `Bearer ${serviceRoleKey}`,
-          "Content-Type": "application/json",
-        },
-      })
-    } finally {
-      clearTimeout(timeout)
-    }
-
-    if (!response.ok) {
-      const text = await response.text()
-      throw new Error(`Auth lookup failed: ${response.status} ${text}`)
-    }
-
-    const json = await response.json()
-    const users = Array.isArray(json) ? json : Array.isArray(json?.users) ? json.users : []
-    const found = users.find((u: { email?: string }) => (u.email ?? "").toLowerCase() === email)
-    if (found) {
-      return { id: found.id }
-    }
-
-    const total = Number(response.headers.get("x-total-count") ?? "0")
-    if (total > 0 && perPage > 0) {
-      lastPage = Math.max(1, Math.ceil(total / perPage))
-    }
-
-    page++
-  }
-
-  return null
+async function findAuthUserByEmail(email: string): Promise<{ id: string } | null> {
+  const { getAuth } = await import("@/lib/database/auth")
+  const user = await (await getAuth().$context).internalAdapter.findUserByEmail(email)
+  return user ? { id: user.user.id } : null
 }
 
 export async function createCourseAction(_: ActionState | undefined, formData: FormData) {
@@ -138,7 +92,7 @@ export async function createCourseAction(_: ActionState | undefined, formData: F
     const result = courseSchema.safeParse({ ...raw, status: raw.status ?? "draft", slug: raw.slug || `${base}-${crypto.randomUUID().slice(0, 8)}`, featured: formData.get("featured") === "true" })
     if (!result.success) return fail(courseValidationMessage(result.error.issues))
     const parsed = result.data
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data, error } = await supabase
       .from("courses")
       .insert({
@@ -174,7 +128,7 @@ export async function updateCourseAction(_: ActionState | undefined, formData: F
     if (!result.success) return fail(courseValidationMessage(result.error.issues))
     const parsed = result.data
     const changes = Object.fromEntries(Object.entries(parsed).filter(([key]) => formData.has(key)))
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { error } = await supabase
       .from("courses")
       .update({
@@ -202,7 +156,7 @@ export async function updateCourseAction(_: ActionState | undefined, formData: F
 export async function deleteCourseAction(formData: FormData) {
   await requireAdmin()
   const id = String(formData.get("id"))
-  const supabase = createSupabaseAdminClient()
+  const supabase = createDatabaseAdminClient()
   const { error } = await supabase.from("courses").delete().eq("id", id)
   if (error) throw new Error(error.message)
   await audit("course.deleted", "course", id)
@@ -242,7 +196,7 @@ export async function createSectionAction(_: ActionState | undefined, formData: 
     const result = sectionEditorSchema.safeParse(formObject(formData))
     if (!result.success) return fail("Enter a section title with at least 3 characters and select a course.")
     const parsed = result.data
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     for (let attempt = 0; attempt < 4; attempt++) {
       const position = await appendPosition(supabase, "course_sections", "course_id", parsed.course_id)
       const { data, error } = await supabase.from("course_sections")
@@ -263,7 +217,7 @@ export async function updateSectionAction(_: ActionState | undefined, formData: 
     const identity = lessonEditIdentitySchema.safeParse(formObject(formData))
     const result = sectionEditorSchema.safeParse(formObject(formData))
     if (!identity.success || !result.success) return fail("Check the section title and refresh the page before saving.")
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data, error } = await supabase.from("course_sections")
       .update({ title: result.data.title, description: result.data.description ?? null })
       .eq("id", identity.data.id).eq("course_id", result.data.course_id).eq("updated_at", identity.data.updated_at).select("id").maybeSingle()
@@ -287,7 +241,7 @@ export async function createLessonAction(_: ActionState | undefined, formData: F
     if (parsed.lesson_type === "video" && parsed.status === "published") return fail("Create as Draft, then upload and attach a Ready video before publishing.")
     if (parsed.status === "published" && [ "pdf_resource", "external_resource"].includes(parsed.lesson_type)) return fail("Save as Draft first, attach your content, then publish the lesson.")
     if (parsed.status === "published" && parsed.lesson_type === "text" && !parsed.description) return fail("Add lesson text before publishing.")
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const slugBase = parsed.title.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "lesson"
     const slug = `${slugBase}-${crypto.randomUUID().slice(0, 8)}`
     for (let attempt = 0; attempt < 4; attempt++) {
@@ -313,7 +267,7 @@ export async function updateLessonAction(_: ActionState | undefined, formData: F
     const identity = lessonEditIdentitySchema.safeParse(formObject(formData))
     const result = lessonEditorSchema.omit({ section_id: true }).safeParse(formObject(formData))
     if (!identity.success || !result.success) return fail("Check the title, content type, and visibility. Refresh the page if needed.")
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data: lesson, error: loadError } = await supabase.from("lessons")
       .select("*, lesson_resources(*), section:course_sections(course_id)").eq("id", identity.data.id).single()
     if (loadError || !lesson) return fail("This lesson is unavailable. Refresh the page.")
@@ -351,7 +305,7 @@ export async function createStudentAction(_: ActionState | undefined, formData: 
   try {
     await requireAdmin()
     const parsed = studentSchema.parse(formObject(formData))
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const env = getOptionalServerEnv()
 
     const normalizedEmail = parsed.email.trim().toLowerCase()
@@ -380,13 +334,10 @@ export async function createStudentAction(_: ActionState | undefined, formData: 
       if (createUserResult.error.code === "email_exists") {
         const env = getOptionalServerEnv()
 
-        if (!env.supabaseUrl || !env.supabaseServiceRoleKey) {
-          return fail("Unable to verify existing auth user. Please try again.")
-        }
 
         let existing: { id: string } | null = null
         try {
-          existing = await findAuthUserByEmail(normalizedEmail, env.supabaseUrl, env.supabaseServiceRoleKey)
+          existing = await findAuthUserByEmail(normalizedEmail)
         } catch {
           return fail("Unable to verify existing auth user. Please try again.")
         }
@@ -466,7 +417,7 @@ export async function updateStudentAction(_: ActionState | undefined, formData: 
   try {
     await requireAdmin()
     const parsed = updateStudentSchema.parse(formObject(formData))
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data, error } = await supabase
       .from("profiles")
       .update({
@@ -498,7 +449,7 @@ export async function updateStudentStatusAction(_: ActionState | undefined, form
   try {
     await requireAdmin()
     const parsed = updateStudentStatusSchema.parse(formObject(formData))
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data, error } = await supabase
       .from("profiles")
       .update({ status: parsed.status })
@@ -522,7 +473,7 @@ export async function deleteStudentAction(_: ActionState | undefined, formData: 
   try {
     await requireAdmin()
     const parsed = deleteStudentSchema.parse(formObject(formData))
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data, error } = await supabase
       .from("profiles")
       .delete()
@@ -546,7 +497,7 @@ export async function createInstructorAction(_: ActionState | undefined, formDat
   try {
     await requireAdmin()
     const parsed = instructorSchema.parse(formObject(formData))
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const env = getOptionalServerEnv()
 
     const normalizedEmail = parsed.email.trim().toLowerCase()
@@ -575,13 +526,10 @@ export async function createInstructorAction(_: ActionState | undefined, formDat
       if (createUserResult.error.code === "email_exists") {
         const env = getOptionalServerEnv()
 
-        if (!env.supabaseUrl || !env.supabaseServiceRoleKey) {
-          return fail("Unable to verify existing auth user. Please try again.")
-        }
 
         let existing: { id: string } | null = null
         try {
-          existing = await findAuthUserByEmail(normalizedEmail, env.supabaseUrl, env.supabaseServiceRoleKey)
+          existing = await findAuthUserByEmail(normalizedEmail)
         } catch {
           return fail("Unable to verify existing auth user. Please try again.")
         }
@@ -659,7 +607,7 @@ export async function assignCourseAction(_: ActionState | undefined, formData: F
   try {
     const admin = await requireAdmin()
     const parsed = assignCourseSchema.parse(formObject(formData))
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data, error } = await supabase
       .from("enrollments")
       .upsert(
@@ -692,7 +640,7 @@ export async function createPaymentMethodAction(_: ActionState | undefined, form
     const result = paymentMethodSchema.safeParse(formObject(formData))
     if (!result.success) return fail(paymentValidationMessage(result.error.issues))
     const parsed = result.data
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data: duplicate, error: lookupError } = await supabase.from("payment_methods")
       .select("id").eq("method_type", parsed.method_type).eq("account_number", parsed.account_number).limit(1).maybeSingle()
     if (lookupError) return paymentSettingsFailure(lookupError)
@@ -747,7 +695,7 @@ export async function updatePaymentMethodAction(_: ActionState | undefined, form
     const result = paymentMethodSchema.omit({ is_active: true }).safeParse(formObject(formData))
     if (!result.success) return fail(paymentValidationMessage(result.error.issues))
     const parsed = result.data
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data: duplicate, error: lookupError } = await supabase.from("payment_methods")
       .select("id").eq("method_type", parsed.method_type).eq("account_number", parsed.account_number)
       .not("id", "eq", identity.data.id).limit(1).maybeSingle()
@@ -772,7 +720,7 @@ export async function updatePaymentMethodStatusAction(_: ActionState | undefined
     const result = paymentMethodStatusSchema.safeParse(formObject(formData))
     if (!result.success) return fail("Refresh the page before changing availability.")
     const { id, updated_at, is_active } = result.data
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data, error } = await supabase.from("payment_methods").update({ is_active })
       .eq("id", id).eq("updated_at", updated_at).select("id").maybeSingle()
     if (error) return fail("We could not change availability. Please try again.")
@@ -791,7 +739,7 @@ export async function reviewPaymentAction(_: ActionState | undefined, formData: 
     const parsedResult = paymentReviewSchema.safeParse(formObject(formData))
     if (!parsedResult.success) return fail("Choose a valid payment and review status.")
     const parsed = parsedResult.data
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     if (parsed.status === "approved") {
       const result = await approvePayment(supabase, parsed.payment_id, admin.id)
       revalidatePath("/admin/payments")
@@ -855,7 +803,7 @@ export async function createLiveClassAction(_: ActionState | undefined, formData
   try {
     await requireAdmin()
     const parsed = liveClassSchema.parse(formObject(formData))
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data, error } = await supabase
       .from("live_classes")
       .insert({
@@ -880,7 +828,7 @@ export async function createAnnouncementAction(_: ActionState | undefined, formD
   try {
     const admin = await requireAdmin()
     const parsed = announcementSchema.parse(formObject(formData))
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data, error } = await supabase
       .from("announcements")
       .insert({
@@ -906,7 +854,7 @@ export async function updateContactStatusAction(formData: FormData) {
     await requireAdmin()
     const id = String(formData.get("id"))
     const status = String(formData.get("status") ?? "").trim()
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { error } = await supabase
       .from("contact_submissions")
       .update({ status, updated_at: new Date().toISOString() })

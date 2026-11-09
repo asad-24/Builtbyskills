@@ -6,8 +6,8 @@ const mockGetPublicUrl = vi.fn(() => ({
   data: { publicUrl: "https://example.supabase.co/storage/v1/object/public/course-thumbnails/test.jpg" },
 }))
 
-vi.mock("@/lib/supabase/browser", () => ({
-  createSupabaseBrowserClient: vi.fn(() => ({
+vi.mock("@/lib/database/browser", () => ({
+  createDatabaseBrowserClient: vi.fn(() => ({
     storage: {
       from: vi.fn(() => ({
         uploadToSignedUrl: mockUploadToSignedUrl,

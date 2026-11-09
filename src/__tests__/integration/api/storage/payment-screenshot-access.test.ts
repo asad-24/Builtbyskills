@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
 
 import { GET } from "@/app/api/admin/payments/[id]/screenshot/route"
 import { requireAdmin } from "@/lib/auth/session"
 import { AppAuthError, AppForbiddenError } from "@/lib/errors"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { createSupabaseMock } from "@/test/mocks/supabase"
 
 describe("Admin payment screenshot access", () => {
@@ -22,14 +22,14 @@ describe("Admin payment screenshot access", () => {
     database = createSupabaseMock().mock
     database.from("payment_submissions").maybeSingle.mockResolvedValue({ data: { screenshot_path: "legacy/receipt.png" }, error: null })
     sign.mockResolvedValue({ data: { signedUrl }, error: null })
-    vi.mocked(createSupabaseAdminClient).mockReturnValue({ ...database, storage: { from: vi.fn(() => ({ createSignedUrl: sign })) } } as never)
+    vi.mocked(createDatabaseAdminClient).mockReturnValue({ ...database, storage: { from: vi.fn(() => ({ createSignedUrl: sign })) } } as never)
   })
 
   it("opens the stored path for the selected payment using a 60-second private signed URL", async () => {
     const response = await request()
     expect(database.from).toHaveBeenCalledWith("payment_submissions")
     expect(database.from("payment_submissions").eq).toHaveBeenCalledWith("id", "payment-1")
-    const client = vi.mocked(createSupabaseAdminClient).mock.results[0].value
+    const client = vi.mocked(createDatabaseAdminClient).mock.results[0].value
     expect(client.storage.from).toHaveBeenCalledWith("payment-screenshots")
     expect(sign).toHaveBeenCalledWith("legacy/receipt.png", 60)
     expect(response.status).toBe(307)
@@ -44,7 +44,7 @@ describe("Admin payment screenshot access", () => {
     vi.mocked(requireAdmin).mockRejectedValue(error)
     const response = await request()
     expect(response.status).toBe(status)
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+    expect(createDatabaseAdminClient).not.toHaveBeenCalled()
     expect(sign).not.toHaveBeenCalled()
   })
 

@@ -26,11 +26,11 @@ export function PageHeader({
 export function SetupNotice({ message }: { message: string }) {
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-950">
-      <h2 className="text-lg font-semibold">Supabase setup needed</h2>
+      <h2 className="text-lg font-semibold">Database setup needed</h2>
       <p className="mt-2 text-sm leading-6">{message}</p>
       <p className="mt-2 text-sm leading-6">
         Add the values in <code className="rounded bg-amber-100 px-1">.env.local</code>, run the
-        migrations, create the first Super Admin in Supabase Auth, then refresh this page.
+        MongoDB initialization, create the first administrator, then refresh this page.
       </p>
     </div>
   )
@@ -176,7 +176,7 @@ export function AdminTable({
   rows: React.ReactNode[][]
 }) {
   if (rows.length === 0) {
-    return <EmptyState title="No records yet" description="When records exist in Supabase, they will appear here." />
+    return <EmptyState title="No records yet" description="Saved records will appear here." />
   }
 
   return (

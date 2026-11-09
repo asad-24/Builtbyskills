@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 const { send, signed } = vi.hoisted(() => ({ send: vi.fn(), signed: vi.fn() }))
 vi.mock("@/lib/r2/server", () => ({ getR2Client: () => ({ send }), getR2Config: () => ({ bucket: "builtbyskills-course-videos" }) }))
 vi.mock("@aws-sdk/s3-request-presigner", () => ({ getSignedUrl: signed }))
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { AppAuthError, AppForbiddenError } from "@/lib/errors"
 import { POST } from "@/app/api/admin/lesson-videos/route"
 import { getCourseBuilderData } from "@/features/admin/data"
@@ -20,7 +20,7 @@ function request(body: object, origin = "https://academy.example.com") {
 function op(operation: string, extra = {}) { return request({ operation, lessonId: ids.lesson, uploadId: ids.upload, ...extra }) }
 function setup() {
   const fixture = videoFixture()
-  vi.mocked(createSupabaseAdminClient).mockReturnValue(fixture.db as never)
+  vi.mocked(createDatabaseAdminClient).mockReturnValue(fixture.db as never)
   return fixture
 }
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(requireAdmin).mockResolvedValue({ id: ids.admin, role: "super_admin", status: "active" } as never); signed.mockResolvedValue("https://private.example.com/temporary-part"); send.mockResolvedValue({ UploadId: "mpu" }) })
@@ -40,7 +40,7 @@ describe("private R2 multipart administration", () => {
     setup(); vi.mocked(requireAdmin).mockRejectedValue(error)
     const response = await POST(request({ operation: "begin", lessonId: ids.lesson, input }))
     expect(response.status).toBe(error instanceof AppAuthError ? 401 : 403)
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled(); expect(send).not.toHaveBeenCalled()
+    expect(createDatabaseAdminClient).not.toHaveBeenCalled(); expect(send).not.toHaveBeenCalled()
   })
   it("denies cross-origin control", async () => {
     setup(); expect((await POST(op("complete"))).status).not.toBe(403)
@@ -109,7 +109,7 @@ describe("private R2 multipart administration", () => {
     const { asset } = setup()
     send.mockResolvedValue({ ContentLength: 100, ContentType: "video/mp4", Metadata: { "asset-id": asset.id }, ETag: '"verified"', ...change })
     expect((await POST(op("complete"))).status).toBe(400)
-    expect(vi.mocked(createSupabaseAdminClient)().rpc).not.toHaveBeenCalledWith("finish_lesson_video_upload", expect.anything())
+    expect(vi.mocked(createDatabaseAdminClient)().rpc).not.toHaveBeenCalledWith("finish_lesson_video_upload", expect.anything())
   })
   it("re-verifies stuck validating objects before Ready", async () => {
     const { session, asset } = setup(); session.state = "validating"; asset.state = "validating"; Object.assign(asset, { verified_bytes: 100, object_etag: '"verified"' })

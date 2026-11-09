@@ -1,224 +1,37 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { StrictMode } from "react"
-import { act, fireEvent } from "@testing-library/react"
-import { createBrowserClient } from "@supabase/ssr"
+import { fireEvent } from "@testing-library/react"
 import { render, screen } from "@/test/utils/render"
 import ResetPasswordPage from "@/app/reset-password/page"
-import { passwordUpdateError, recoveryError } from "@/lib/auth/password-recovery"
-
-const { router } = vi.hoisted(() => ({ router: { replace: vi.fn() } }))
-vi.mock("next/navigation", () => ({ useRouter: () => router }))
-vi.mock("@supabase/ssr", () => ({ createBrowserClient: vi.fn() }))
-
-function setup(role = "student", status = "active") {
-  window.history.replaceState({}, "", "/reset-password")
-  const auth = {
-    getUser: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
-    updateUser: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
-    exchangeCodeForSession: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
-    verifyOtp: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
-    setSession: vi.fn().mockResolvedValue({ data: { user: { id: "auth-user" } }, error: null }),
-  }
-  const single = vi.fn().mockResolvedValue({ data: { role, status }, error: null })
-  const eq = vi.fn(() => ({ single }))
-  const supabase = { auth, from: vi.fn(() => ({ select: vi.fn(() => ({ eq })) })) }
-  vi.mocked(createBrowserClient).mockReturnValue(supabase as unknown as ReturnType<typeof createBrowserClient>)
-  return { auth, eq, single }
-}
-
-async function fill(password = "NewPassword123", confirm = password) {
+import { recoveryError } from "@/lib/auth/password-recovery"
+const { resetPassword } = vi.hoisted(() => ({ resetPassword: vi.fn() }))
+vi.mock("better-auth/react", () => ({ createAuthClient: () => ({ resetPassword }) }))
+beforeEach(() => { vi.clearAllMocks(); resetPassword.mockResolvedValue({ error: null }); window.history.replaceState({}, "", "/reset-password?token=synthetic-reset-token-123456789") })
+async function fill(password = "NewPassword123", confirmPassword = password) {
   const input = await screen.findByLabelText("New password")
-  fireEvent.change(input, { target: { value: password } })
-  fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: confirm } })
-  fireEvent.submit(input.closest("form")!)
+  fireEvent.change(input, { target: { value: password } }); fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: confirmPassword } }); fireEvent.submit(input.closest("form")!)
 }
-
-describe("password reset form (mocked Supabase)", () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it.each([["student", "/student"], ["instructor", "/instructor"], ["super_admin", "/admin"]])(
-    "updates the authenticated %s password and offers %s after success", async (role, destination) => {
-      const { auth, eq } = setup(role)
-      render(<ResetPasswordPage />)
-      await fill()
-      expect(await screen.findByRole("link", { name: "Continue to dashboard" })).toHaveAttribute("href", destination)
-      expect(auth.updateUser).toHaveBeenCalledExactlyOnceWith({ password: "NewPassword123" })
-      expect(auth.getUser).toHaveBeenCalledTimes(2)
-      expect(eq).toHaveBeenCalledWith("auth_user_id", "auth-user")
-      expect(screen.getByRole("status")).toHaveTextContent("Your password has been updated")
-      expect(screen.queryByLabelText("New password")).not.toBeInTheDocument()
-      expect(router.replace).not.toHaveBeenCalled()
-    })
-
-  it("supports existing forgot-password links pointing directly at reset-password", async () => {
-    const { auth } = setup()
-    window.history.replaceState({}, "", "/reset-password?code=test&next=https://evil.example")
-    render(<ResetPasswordPage />)
-    await fill()
-    expect(auth.exchangeCodeForSession).toHaveBeenCalledWith("test")
-    expect(auth.getUser).toHaveBeenCalledTimes(1)
-    expect(await screen.findByRole("link", { name: "Continue to dashboard" })).toHaveAttribute("href", "/student")
-  })
-
-  it("establishes a recovery session from token_hash on first load", async () => {
-    const { auth } = setup()
-    window.history.replaceState({}, "", "/reset-password?token_hash=recovery-token&type=recovery")
-    render(<ResetPasswordPage />)
-    await fill()
-    expect(auth.verifyOtp).toHaveBeenCalledWith({ token_hash: "recovery-token", type: "recovery" })
-    expect(auth.getUser).toHaveBeenCalledTimes(1)
-    expect(await screen.findByRole("link", { name: "Continue to dashboard" })).toHaveAttribute("href", "/student")
-  })
-
-  it("establishes an invite session from token_hash on first load", async () => {
-    const { auth } = setup()
-    window.history.replaceState({}, "", "/reset-password?token_hash=invite-token&type=invite")
-    render(<ResetPasswordPage />)
-    await fill()
-    expect(auth.verifyOtp).toHaveBeenCalledWith({ token_hash: "invite-token", type: "invite" })
-    expect(auth.getUser).toHaveBeenCalledTimes(1)
-    expect(await screen.findByRole("link", { name: "Continue to dashboard" })).toHaveAttribute("href", "/student")
-  })
-
-  it("establishes a session from access_token and refresh_token on first load", async () => {
-    const { auth } = setup()
-    window.history.replaceState({}, "", '/reset-password#access_token=access-token&refresh_token=refresh-token&type=recovery')
-    render(<ResetPasswordPage />)
-    await fill()
-    expect(auth.setSession).toHaveBeenCalledWith({ access_token: "access-token", refresh_token: "refresh-token" })
-    expect(auth.getUser).toHaveBeenCalledTimes(1)
-    expect(await screen.findByRole("link", { name: "Continue to dashboard" })).toHaveAttribute("href", "/student")
-  })
-
-  it("does not exchange credentials more than once", async () => {
-    const { auth } = setup()
-    window.history.replaceState({}, "", "/reset-password?token_hash=recovery-token&type=recovery")
-    render(<ResetPasswordPage />)
-    await fill()
-    expect(auth.verifyOtp).toHaveBeenCalledTimes(1)
-    expect(auth.exchangeCodeForSession).not.toHaveBeenCalled()
-    expect(auth.setSession).not.toHaveBeenCalled()
-  })
-
-  it.each([["short", "short", "at least 8"], ["NewPassword123", "", "confirm your password"],
-    ["NewPassword123", "OtherPassword123", "Passwords do not match"]])(
-    "rejects invalid password fields before mutation", async (password, confirm, message) => {
-      const { auth } = setup()
-      render(<ResetPasswordPage />)
-      await fill(password, confirm)
-      expect(await screen.findByRole("alert")).toHaveTextContent(message)
-      expect(auth.updateUser).not.toHaveBeenCalled()
-    })
-
-  it("blocks unauthenticated direct visits", async () => {
-    const { auth } = setup()
-    auth.getUser.mockResolvedValue({ data: { user: null }, error: null })
-    render(<ResetPasswordPage />)
-    expect(await screen.findByRole("alert")).toHaveTextContent(recoveryError)
-    expect(screen.queryByLabelText("New password")).not.toBeInTheDocument()
-    expect(auth.updateUser).not.toHaveBeenCalled()
-  })
-
-  it.each([null, { id: "different-user" }])("blocks lost or changed sessions on submit", async (user) => {
-    const { auth } = setup()
-    render(<ResetPasswordPage />)
-    await screen.findByLabelText("New password")
-    auth.getUser.mockResolvedValue({ data: { user }, error: null })
-    await fill()
-    expect(await screen.findByRole("alert")).toHaveTextContent(recoveryError)
-    expect(auth.updateUser).not.toHaveBeenCalled()
-    expect(screen.queryByLabelText("New password")).not.toBeInTheDocument()
-  })
-
-  it.each(["returned", "thrown"])("shows a safe message for %s password update failures", async (kind) => {
-    const { auth } = setup()
-    if (kind === "returned") auth.updateUser.mockResolvedValue({ error: { message: "secret password internals" } })
-    else auth.updateUser.mockRejectedValue(new Error("secret password internals"))
-    render(<ResetPasswordPage />)
-    await fill()
-    expect(await screen.findByRole("alert")).toHaveTextContent(passwordUpdateError)
-    expect(screen.queryByText(/secret password internals/)).not.toBeInTheDocument()
-    expect(screen.queryByRole("link", { name: "Continue to dashboard" })).not.toBeInTheDocument()
-  })
-
-  it.each([["student", "inactive"], ["instructor", "suspended"], ["unknown", "active"]])(
-    "uses login for unavailable profile access", async (role, status) => {
-      setup(role, status)
-      render(<ResetPasswordPage />)
-      await fill()
-      expect(await screen.findByRole("link", { name: "Continue to login" })).toHaveAttribute("href", "/login")
-    })
-
-  it("retains success when profile lookup throws", async () => {
-    const { single, auth } = setup()
-    single.mockRejectedValue(new Error("lookup failed"))
-    render(<ResetPasswordPage />)
-    await fill()
+describe("MongoDB password reset", () => {
+  it("uses the token once and sends the user to sign in", async () => {
+    render(<ResetPasswordPage />); await fill()
     expect(await screen.findByRole("link", { name: "Continue to login" })).toHaveAttribute("href", "/login")
-    expect(auth.updateUser).toHaveBeenCalledOnce()
-  })
-})
-
-
-describe("recovery URL processing order", () => {
-  it.each(["success", "failure", "throw"])("keeps PKCE URL through processing and scrubs after %s", async (outcome) => {
-    const { auth } = setup()
-    const path = "/reset-password?code=test-code&sb_flow_id=0123456789abcdef0123456789abcdef"
-    window.history.replaceState({}, "", path)
-    let finish!: () => void
-    auth.exchangeCodeForSession.mockImplementation(async () => {
-      // Models the installed SDK reading window.location after initialization.
-      await new Promise<void>(resolve => { finish = resolve })
-      expect(window.location.pathname + window.location.search).toBe(path)
-      if (outcome === "throw") throw new Error("private credential details")
-      if (outcome === "failure") return { data: { user: null }, error: { name: "AuthPKCECodeVerifierMissingError" } }
-      return { data: { user: { id: "auth-user" } }, error: null }
-    })
-    render(<StrictMode><ResetPasswordPage /></StrictMode>)
-    expect(window.location.search).toContain("sb_flow_id=")
-    expect(screen.queryByLabelText("New password")).not.toBeInTheDocument()
-    await act(async () => { finish() })
-    if (outcome === "success") expect(await screen.findByLabelText("New password")).toBeInTheDocument()
-    else {
-      expect(await screen.findByRole("alert")).toHaveTextContent(recoveryError)
-      expect(screen.queryByLabelText("New password")).not.toBeInTheDocument()
-    }
+    expect(resetPassword).toHaveBeenCalledExactlyOnceWith({ newPassword: "NewPassword123", token: "synthetic-reset-token-123456789" })
     expect(window.location.search).toBe("")
-    expect(window.location.hash).toBe("")
-    expect(auth.exchangeCodeForSession).toHaveBeenCalledExactlyOnceWith("test-code")
-    expect(auth.getUser).not.toHaveBeenCalled() // No unrelated-session rescue.
   })
-
-  it.each([
-    ["verifyOtp", "/reset-password?token_hash=test&type=recovery"],
-    ["verifyOtp", "/reset-password?token_hash=test&type=invite"],
-    ["setSession", "/reset-password#access_token=test&refresh_token=test&type=recovery"],
-  ] as const)("preserves %s credentials until consumed", async (method, path) => {
-    const { auth } = setup()
-    window.history.replaceState({}, "", path)
-    auth[method].mockImplementation(async () => {
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe(path)
-      return { data: { user: { id: "auth-user" } }, error: null }
-    })
-    render(<ResetPasswordPage />)
-    expect(await screen.findByLabelText("New password")).toBeInTheDocument()
-    expect(window.location.search + window.location.hash).toBe("")
-    expect(auth[method]).toHaveBeenCalledOnce()
-    expect(auth.getUser).not.toHaveBeenCalled()
+  it("retains the reset token under Strict Mode", async () => {
+    render(<StrictMode><ResetPasswordPage /></StrictMode>); await fill()
+    expect(await screen.findByRole("link", { name: "Continue to login" })).toBeInTheDocument()
   })
-
-  it("does not scrub a newer navigation when an old exchange settles", async () => {
-    const { auth } = setup()
-    window.history.replaceState({}, "", "/reset-password?code=old")
-    let finish!: () => void
-    auth.exchangeCodeForSession.mockImplementation(async () => {
-      await new Promise<void>(resolve => { finish = resolve })
-      return { data: { user: { id: "auth-user" } }, error: null }
-    })
-    const view = render(<ResetPasswordPage />)
-    view.unmount()
-    window.history.replaceState({}, "", "/reset-password?code=new")
-    await act(async () => { finish() })
-    expect(window.location.search).toBe("?code=new")
+  it.each(["/reset-password", "/reset-password?error=INVALID_TOKEN", "/reset-password?code=old-supabase-code"])("rejects missing or obsolete tokens: %s", async url => {
+    window.history.replaceState({}, "", url); render(<ResetPasswordPage />)
+    expect(await screen.findByText(recoveryError)).toBeInTheDocument(); expect(resetPassword).not.toHaveBeenCalled()
+  })
+  it("shows invalid/expired token errors without claiming success", async () => {
+    resetPassword.mockResolvedValue({ error: { code: "INVALID_TOKEN" } }); render(<ResetPasswordPage />); await fill()
+    expect(await screen.findByText(recoveryError)).toBeInTheDocument(); expect(screen.queryByText("Your password has been updated. You can now continue.")).not.toBeInTheDocument()
+  })
+  it("validates password confirmation before sending a request", async () => {
+    render(<ResetPasswordPage />); await fill("NewPassword123", "different-password")
+    expect(await screen.findByText("Passwords do not match.")).toBeInTheDocument(); expect(resetPassword).not.toHaveBeenCalled()
   })
 })

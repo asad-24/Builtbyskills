@@ -1,5 +1,4 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
-import { AuthRetryableFetchError } from "@supabase/supabase-js"
 import { createSupabaseMock } from "@/test/mocks/supabase"
 
 vi.mock("server-only", () => ({}))
@@ -19,12 +18,12 @@ vi.mock("@/lib/email/send", () => ({
   }),
 }))
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: vi.fn(),
+vi.mock("@/lib/database/server", () => ({
+  createDatabaseServerClient: vi.fn(),
 }))
 
 import { redirect } from "next/navigation"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createDatabaseServerClient } from "@/lib/database/server"
 import { signInAction, signOutAction, forgotPasswordAction } from "@/actions/auth"
 
 function createFormData(data: Record<string, string>): FormData {
@@ -51,7 +50,7 @@ describe("auth actions", () => {
         data: { role: "student", status: "active" },
         error: null,
       })
-      vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as any)
+      vi.mocked(createDatabaseServerClient).mockResolvedValue(mock as any)
 
       const formData = createFormData({
         email: "student@example.com",
@@ -72,7 +71,7 @@ describe("auth actions", () => {
         data: { role: "instructor", status: "active" },
         error: null,
       })
-      vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as any)
+      vi.mocked(createDatabaseServerClient).mockResolvedValue(mock as any)
 
       const formData = createFormData({
         email: "instructor@example.com",
@@ -93,7 +92,7 @@ describe("auth actions", () => {
         data: { role: "super_admin", status: "active" },
         error: null,
       })
-      vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as any)
+      vi.mocked(createDatabaseServerClient).mockResolvedValue(mock as any)
 
       const formData = createFormData({
         email: "admin@example.com",
@@ -109,7 +108,7 @@ describe("auth actions", () => {
       mock.auth.signInWithPassword.mockResolvedValue({
         error: { message: "Invalid login credentials" },
       })
-      vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as any)
+      vi.mocked(createDatabaseServerClient).mockResolvedValue(mock as any)
 
       const formData = createFormData({
         email: "wrong@example.com",
@@ -125,12 +124,12 @@ describe("auth actions", () => {
     })
 
     it.each([
-      new AuthRetryableFetchError("fetch failed", 0),
-      new AuthRetryableFetchError("Internal upstream service details", 503),
+      { code: "AUTH_UNAVAILABLE", message: "fetch failed" },
+      { code: "AUTH_UNAVAILABLE", message: "Internal upstream service details" },
     ])("shows a friendly service-unavailable message for network/provider failure: %s", async error => {
       const { mock } = createSupabaseMock()
       mock.auth.signInWithPassword.mockResolvedValue({ error })
-      vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as never)
+      vi.mocked(createDatabaseServerClient).mockResolvedValue(mock as never)
 
       const target = `/login?error=${encodeURIComponent("Sign-in is temporarily unavailable. Please try again shortly.")}`
       await expect(signInAction(createFormData({ email: "student@example.com", password: "synthetic-password" }))).rejects.toThrow(`REDIRECT:${target}`)
@@ -145,7 +144,7 @@ describe("auth actions", () => {
       mock.auth.getUser.mockResolvedValue({
         data: { user: null },
       })
-      vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as any)
+      vi.mocked(createDatabaseServerClient).mockResolvedValue(mock as any)
 
       const formData = createFormData({
         email: "nouser@example.com",
@@ -163,7 +162,7 @@ describe("auth actions", () => {
     it("redirects to /login after sign out", async () => {
       const { mock } = createSupabaseMock()
       mock.auth.signOut.mockResolvedValue({ error: null })
-      vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as any)
+      vi.mocked(createDatabaseServerClient).mockResolvedValue(mock as any)
 
       await expect(signOutAction()).rejects.toThrow("REDIRECT:/login")
       expect(redirect).toHaveBeenCalledWith("/login")
@@ -174,7 +173,7 @@ describe("auth actions", () => {
     it("redirects to /forgot-password?sent=1 on success", async () => {
       const { mock } = createSupabaseMock()
       mock.auth.resetPasswordForEmail = vi.fn().mockResolvedValue({ error: null })
-      vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as any)
+      vi.mocked(createDatabaseServerClient).mockResolvedValue(mock as any)
 
       const formData = createFormData({
         email: "user@example.com",
@@ -194,7 +193,7 @@ describe("auth actions", () => {
       mock.auth.resetPasswordForEmail = vi.fn().mockResolvedValue({
         error: { message: "Email not found" },
       })
-      vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as any)
+      vi.mocked(createDatabaseServerClient).mockResolvedValue(mock as any)
 
       const formData = createFormData({
         email: "missing@example.com",

@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireRole: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
 
 import { getStudentDashboardData } from "@/features/student/data"
 import { requireRole } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { AppForbiddenError } from "@/lib/errors"
 
 const studentId = "student-1"
@@ -84,7 +84,7 @@ function database(enrollments = [enrollment()], failedTable?: string) {
     queries[table] = query(table)
     return queries[table]
   })
-  vi.mocked(createSupabaseAdminClient).mockReturnValue({ from } as unknown as ReturnType<typeof createSupabaseAdminClient>)
+  vi.mocked(createDatabaseAdminClient).mockReturnValue({ from } as unknown as ReturnType<typeof createDatabaseAdminClient>)
   return { queries, from }
 }
 
@@ -194,6 +194,6 @@ describe("student dashboard course authorization", () => {
     vi.mocked(requireRole).mockRejectedValue(new AppForbiddenError())
     const result = await getStudentDashboardData()
     expect(result.ok).toBe(false)
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+    expect(createDatabaseAdminClient).not.toHaveBeenCalled()
   })
 })

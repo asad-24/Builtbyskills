@@ -45,3 +45,8 @@ next-env.d.ts
 /playwright-report/
 /test-results/
 /.next-lms-test/
+
+# Atlas onboarding credentials
+/atlas-credentials.env
+/.next-mongodb-e2e/
+!.env.example

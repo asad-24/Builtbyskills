@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createSupabaseMock } from "@/test/mocks/supabase"
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 vi.mock("@/lib/email/send", () => ({ sendTransactionalEmail: vi.fn() }))
 import { createCourseDraftAction, updateCourseAction, updateCoursePublicationAction } from "@/actions/admin"
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 
 const id = "550e8400-e29b-41d4-a716-446655440001"
 const required = { title: "AI", short_description: "Learn AI", description: "Try AI.", price: "0" }
@@ -18,7 +18,7 @@ function form(fields: Record<string, string>) {
 }
 function setup() {
   const { mock } = createSupabaseMock()
-  vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as never)
+  vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as never)
   const courses = mock.from("courses")
   courses.single.mockResolvedValue({ data: { id }, error: null })
   return { mock, courses }

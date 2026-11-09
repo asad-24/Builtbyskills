@@ -2,12 +2,12 @@ import "server-only"
 
 import { AppAuthError, AppForbiddenError, MissingEnvironmentError } from "@/lib/errors"
 import { requireRole } from "@/lib/auth/session"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createDatabaseServerClient } from "@/lib/database/server"
 import type { AppResult } from "@/types/lms"
 
 function appError(error: unknown): AppResult<never> {
   if (error instanceof MissingEnvironmentError) {
-    return { ok: false, reason: "missing_env", message: `Configure ${error.keys.join(", ")} to connect Supabase.` }
+    return { ok: false, reason: "missing_env", message: `Configure ${error.keys.join(", ")} to connect MongoDB.` }
   }
   if (error instanceof AppAuthError) return { ok: false, reason: "unauthorized", message: error.message }
   if (error instanceof AppForbiddenError) return { ok: false, reason: "forbidden", message: error.message }
@@ -17,7 +17,7 @@ function appError(error: unknown): AppResult<never> {
 export async function getInstructorDashboardData() {
   try {
     const profile = await requireRole(["instructor"])
-    const supabase = await createSupabaseServerClient()
+    const supabase = await createDatabaseServerClient()
     const assigned = await supabase.from("instructor_courses")
       .select("*, course:courses(*, enrollments(*), course_sections(*, lessons(*)))").eq("instructor_id", profile.id)
     if (assigned.error) throw assigned.error

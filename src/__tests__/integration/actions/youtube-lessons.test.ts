@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createSupabaseMock } from "@/test/mocks/supabase"
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 vi.mock("@/lib/email/send", () => ({ sendTransactionalEmail: vi.fn() }))
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { createLessonAction, updateLessonAction } from "@/actions/admin"
 
 const id = "550e8400-e29b-41d4-a716-446655440001"
@@ -19,7 +19,7 @@ function form(overrides: Record<string, string> = {}) {
 }
 function setup(overrides = {}) {
   const { mock } = createSupabaseMock()
-  vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as never)
+  vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as never)
   const lessons = mock.from("lessons")
   lessons.single.mockResolvedValue({ data: { id, mux_playback_id: "historical", section: { course_id: id }, ...overrides }, error: null })
   lessons.maybeSingle.mockResolvedValue({ data: { id, position: 2 }, error: null })

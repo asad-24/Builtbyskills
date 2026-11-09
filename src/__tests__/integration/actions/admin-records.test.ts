@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createSupabaseMock } from "@/test/mocks/supabase"
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { deleteInstructorAction, updateInstructorAction, deleteContactSubmissionAction, deletePaymentMethodAction } from "@/actions/admin-records"
 const id = "11111111-1111-4111-8111-111111111111"
 const timestamp = "2026-10-02T12:00:00.000Z"
@@ -16,18 +16,18 @@ describe("guarded admin mutations", () => {
     it(`${action.name} rejects unauthorized requests before database access`, async () => {
       vi.mocked(requireAdmin).mockRejectedValue(new Error("forbidden"))
       expect((await action(undefined, form())).ok).toBe(false)
-      expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+      expect(createDatabaseAdminClient).not.toHaveBeenCalled()
     })
   }
   it("requires confirmation and valid identity", async () => {
     expect((await deleteContactSubmissionAction(undefined, form({ confirmed: "false" }))).ok).toBe(false)
     expect((await deleteContactSubmissionAction(undefined, form({ id: "bad" }))).ok).toBe(false)
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+    expect(createDatabaseAdminClient).not.toHaveBeenCalled()
   })
   for (const [action, table] of [[deleteInstructorAction, "profiles"], [deleteContactSubmissionAction, "contact_submissions"]] as const) {
     it(`${action.name} changes only the selected version and rejects double deletion`, async () => {
       const { mock, tableChains } = createSupabaseMock()
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as never)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as never)
       mock.from(table)
       const chain = tableChains.get(table)!.chain
       chain.maybeSingle.mockResolvedValueOnce({ data: { id }, error: null }).mockResolvedValueOnce({ data: null, error: null })
@@ -46,7 +46,7 @@ describe("guarded admin mutations", () => {
   }
   it("edits instructor profile fields without touching auth or assignments", async () => {
     const { mock, tableChains } = createSupabaseMock(); mock.from("profiles")
-    vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as never)
+    vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as never)
     tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: { id }, error: null })
     expect((await updateInstructorAction(undefined, form({ full_name: "New Name", phone: "123", whatsapp: "456", status: "active", email: "ignored@example.com" }))).ok).toBe(true)
     expect(tableChains.get("profiles")!.chain.update).toHaveBeenCalledWith({ full_name: "New Name", phone: "123", whatsapp: "456", status: "active" })
@@ -54,7 +54,7 @@ describe("guarded admin mutations", () => {
   })
   it("uses atomic payment deletion and explains historical references", async () => {
     const rpc = vi.fn().mockResolvedValueOnce({ data: true, error: null }).mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: null, error: { code: "23503" } })
-    vi.mocked(createSupabaseAdminClient).mockReturnValue({ rpc } as never)
+    vi.mocked(createDatabaseAdminClient).mockReturnValue({ rpc } as never)
     expect((await deletePaymentMethodAction(undefined, form())).ok).toBe(true)
     expect((await deletePaymentMethodAction(undefined, form())).ok).toBe(false)
     expect((await deletePaymentMethodAction(undefined, form())).message).toContain("Deactivate")

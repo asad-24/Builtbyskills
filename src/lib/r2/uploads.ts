@@ -2,12 +2,12 @@ import "server-only"
 import { AbortMultipartUploadCommand, CompleteMultipartUploadCommand, CreateMultipartUploadCommand, HeadObjectCommand, ListPartsCommand, UploadPartCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { z } from "zod"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { getR2Client, getR2Config } from "@/lib/r2/server"
 import { VIDEO_MAX_BYTES, VIDEO_PART_BYTES, VIDEO_PART_URL_SECONDS } from "@/lib/r2/constants"
 import { VideoRequestError } from "@/lib/r2/http"
 
-type DB = ReturnType<typeof createSupabaseAdminClient>
+type DB = ReturnType<typeof createDatabaseAdminClient>
 export type UploadSession = { id: string; asset_id: string; initiated_by: string; state: string; multipart_id: string | null; expires_at: string; expected_updated_at: string; operation_token: string | null }
 export type VideoAsset = { id: string; lesson_id: string | null; original_lesson_id: string; original_course_id: string; object_key: string; state: string; expected_bytes: number; verified_bytes: number | null; object_etag: string | null; original_name: string; failure_code: string | null; duration_seconds: number | null; retired_at: string | null; cleanup_after: string | null }
 export const beginVideoSchema = z.object({ lessonId: z.string().uuid(), updatedAt: z.string().datetime({ offset: true }), name: z.string().trim().min(1).max(200).regex(/\.mp4$/i), size: z.number().int().positive().max(VIDEO_MAX_BYTES), contentType: z.literal("video/mp4") }).strict()

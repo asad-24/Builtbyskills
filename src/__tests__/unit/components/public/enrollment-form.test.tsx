@@ -5,8 +5,8 @@ import { render, screen, waitFor } from "@/test/utils/render"
 
 vi.mock("@/actions/public", () => ({ submitEnrollmentAction: vi.fn() }))
 const upload = vi.fn()
-vi.mock("@/lib/supabase/browser", () => ({
-  createSupabaseBrowserClient: () => ({ storage: { from: () => ({ uploadToSignedUrl: upload }) } }),
+vi.mock("@/lib/database/browser", () => ({
+  createDatabaseBrowserClient: () => ({ storage: { from: () => ({ uploadToSignedUrl: upload }) } }),
 }))
 
 import { submitEnrollmentAction } from "@/actions/public"

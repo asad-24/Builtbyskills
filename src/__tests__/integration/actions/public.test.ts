@@ -3,8 +3,8 @@ import { createSupabaseMock } from "@/test/mocks/supabase"
 
 vi.mock("server-only", () => ({}))
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: vi.fn(),
+vi.mock("@/lib/database/admin", () => ({
+  createDatabaseAdminClient: vi.fn(),
 }))
 
 vi.mock("@/lib/email/send", () => ({
@@ -19,7 +19,7 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }))
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { sendTransactionalEmail } from "@/lib/email/send"
 import { revalidatePath } from "next/cache"
 import { submitContactAction, submitEnrollmentAction } from "@/actions/public"
@@ -43,7 +43,7 @@ describe("public actions", () => {
       mock.from("payment_methods").maybeSingle.mockResolvedValue({ data: { id: "550e8400-e29b-41d4-a716-446655440001" }, error: null })
       mock.from("contact_submissions")
       tableChains.get("contact_submissions")!.chain.setResolveWith({ id: "contact-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         full_name: "John Doe",
@@ -63,7 +63,7 @@ describe("public actions", () => {
       mock.from("payment_methods").maybeSingle.mockResolvedValue({ data: { id: "550e8400-e29b-41d4-a716-446655440001" }, error: null })
       mock.from("contact_submissions")
       tableChains.get("contact_submissions")!.chain.setResolveWith(null, { message: "Duplicate entry" })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         full_name: "Jane",
@@ -111,7 +111,7 @@ describe("public actions", () => {
       expect(result.ok).toBe(false)
       expect(result.fieldErrors?.[field]).toBe(message)
       expect(result.message).toBe("Please check the highlighted fields.")
-      expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+      expect(createDatabaseAdminClient).not.toHaveBeenCalled()
       expect(sendTransactionalEmail).not.toHaveBeenCalled()
     })
 
@@ -120,7 +120,7 @@ describe("public actions", () => {
         const data = createFormData(enrollmentFields)
         data.delete(field)
         expect((await submitEnrollmentAction(undefined, data)).ok).toBe(false)
-        expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+        expect(createDatabaseAdminClient).not.toHaveBeenCalled()
       })
 
     it.each([{ data: null, error: null }, { data: null, error: { message: '{"private":"storage failure"}' } }])(
@@ -129,7 +129,7 @@ describe("public actions", () => {
         mock.from("courses").single.mockResolvedValue({ data: { title: "Course", price: 5000, currency: "PKR" }, error: null })
         mock.from("payment_methods").maybeSingle.mockResolvedValue({ data: { id: enrollmentFields.payment_method_id }, error: null })
         mock.storage.info.mockResolvedValue(storageResult)
-        vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as never)
+        vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as never)
         const result = await submitEnrollmentAction(undefined, createFormData(enrollmentFields))
         expect(result).toEqual({ ok: false, message: "Please upload your payment screenshot.", fieldErrors: { screenshot_path: "Please upload your payment screenshot." } })
         expect(mock.storage.from).toHaveBeenCalledWith("payment-screenshots")
@@ -144,7 +144,7 @@ describe("public actions", () => {
       mock.from("courses").single.mockResolvedValue({ data: { title: "Course", price: 5000, currency: "PKR" }, error: null })
       mock.from("payment_methods").maybeSingle.mockResolvedValue({ data: { id: enrollmentFields.payment_method_id }, error: null })
       mock.from("payment_submissions").single.mockResolvedValue({ data: { id: "payment-1" }, error: null })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as never)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as never)
       const data = createFormData(enrollmentFields)
       if (whatsapp === undefined) data.delete("whatsapp")
       else data.set("whatsapp", whatsapp)
@@ -162,7 +162,7 @@ describe("public actions", () => {
       mock.from("courses").single.mockResolvedValue({ data: { title: "Course", price: 5000, currency: "PKR" }, error: null })
       mock.from("payment_methods").maybeSingle.mockResolvedValue({ data: { id: enrollmentFields.payment_method_id }, error: null })
       mock.from("payment_submissions").single.mockResolvedValue({ data: { id: "payment-1" }, error: null })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as never)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as never)
       const data = createFormData({ ...enrollmentFields, full_name: " A ", email: " ali@example.com " })
       data.delete("city")
       expect((await submitEnrollmentAction(undefined, data)).ok).toBe(true)
@@ -180,7 +180,7 @@ describe("public actions", () => {
       const { mock } = createSupabaseMock()
       mock.from("courses").single.mockResolvedValue({ data: { title: "Course", price: 5000, currency: "PKR" }, error: null })
       mock.from("payment_methods").maybeSingle.mockResolvedValue(methodResult)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as never)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as never)
       const result = await submitEnrollmentAction(undefined, createFormData(enrollmentFields))
       expect(result).toEqual({ ok: false, message: "This payment method is no longer available. Refresh the page and select another method." })
       expect(mock.from("payment_methods").eq).toHaveBeenCalledWith("is_active", true)
@@ -200,7 +200,7 @@ describe("public actions", () => {
       const result = await submitEnrollmentAction(undefined, createFormData({ ...enrollmentFields, ...uploadFields }))
       expect(result.ok).toBe(false)
       expect(result.fieldErrors?.screenshot_path).toBeTruthy()
-      expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+      expect(createDatabaseAdminClient).not.toHaveBeenCalled()
       expect(sendTransactionalEmail).not.toHaveBeenCalled()
     })
 
@@ -214,7 +214,7 @@ describe("public actions", () => {
       mock.from("payment_methods").maybeSingle.mockResolvedValue({ data: { id: "550e8400-e29b-41d4-a716-446655440001" }, error: null })
       mock.from("courses").single.mockResolvedValue({ data: { title: "Shopify", price: 5000, currency: "PKR" }, error: null })
       mock.from("payment_submissions").single.mockResolvedValue({ data: { id: "receipt-payment" }, error: null })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
       const formData = createFormData(enrollmentFields)
       for (const [key, value] of Object.entries(optionalFields)) {
         if (value !== undefined) formData.set(key, value)
@@ -243,7 +243,7 @@ describe("public actions", () => {
       tableChains.get("courses")!.chain.single.mockResolvedValue({ data: { title: "Shopify Mastery", price: 7500, currency: "USD" }, error: null })
       mock.from("enrollment_requests")
       tableChains.get("enrollment_requests")!.chain.setResolveWith({ id: "enrollment-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         full_name: "Ali Khan",
@@ -298,7 +298,7 @@ describe("public actions", () => {
       mock.from("payment_methods").maybeSingle.mockResolvedValue({ data: { id: "550e8400-e29b-41d4-a716-446655440001" }, error: null })
       mock.from("courses")
       tableChains.get("courses")!.chain.single.mockResolvedValue(courseResult)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const result = await submitEnrollmentAction(undefined, createFormData({
         full_name: "Ali Khan",
@@ -327,7 +327,7 @@ describe("public actions", () => {
       tableChains.get("payment_submissions")!.chain.single.mockResolvedValue({ data: null, error: { message: "Payment error" } })
       mock.from("courses")
       tableChains.get("courses")!.chain.single.mockResolvedValue({ data: { title: "Shopify", price: 5000, currency: "PKR" }, error: null })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         full_name: "Ali",
@@ -358,7 +358,7 @@ describe("public actions", () => {
       tableChains.get("courses")!.chain.single.mockResolvedValue({ data: { title: "Shopify", price: 5000, currency: "PKR" }, error: null })
       mock.from("enrollment_requests")
       tableChains.get("enrollment_requests")!.chain.setResolveWith(null, { message: "Enrollment error" })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         full_name: "Ali",

@@ -10,7 +10,7 @@ export default async function StudentProfileSecurityPage() {
   if (!result.ok) return <SetupNotice message={result.message} />
   return (
     <div>
-      <PageHeader title="Profile and Security" description="Use Supabase password reset from the forgot-password page to update account credentials." />
+      <PageHeader title="Profile and Security" description="Use password reset from the forgot-password page to update account credentials." />
       <dl className="rounded-lg border border-slate-200 bg-white p-5 text-sm">
         <div className="grid gap-1 py-2"><dt className="font-medium">Name</dt><dd>{result.data.profile.full_name}</dd></div>
         <div className="grid gap-1 py-2"><dt className="font-medium">Email</dt><dd>{result.data.profile.email}</dd></div>

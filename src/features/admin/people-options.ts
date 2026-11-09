@@ -1,11 +1,11 @@
 import "server-only"
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createDatabaseServerClient } from "@/lib/database/server"
 
 // Assignment controls must include older accounts, not just the latest table page.
 export async function getAdminPeopleOptions(role: "student" | "instructor") {
   await requireAdmin()
-  const supabase = await createSupabaseServerClient()
+  const supabase = await createDatabaseServerClient()
   const options: { value: string; label: string }[] = []
   for (let offset = 0; ; offset += 500) {
     const { data, error } = await supabase.from("profiles").select("id,full_name,email,status")

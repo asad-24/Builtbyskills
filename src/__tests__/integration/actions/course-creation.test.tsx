@@ -5,15 +5,15 @@ import { createSupabaseMock } from "@/test/mocks/supabase"
 
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
-vi.mock("@/lib/supabase/browser", () => ({ createSupabaseBrowserClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/browser", () => ({ createDatabaseBrowserClient: vi.fn() }))
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 vi.mock("@/lib/email/send", () => ({ sendTransactionalEmail: vi.fn() }))
 
 import { createCourseAction, updateCourseAction } from "@/actions/admin"
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
+import { createDatabaseBrowserClient } from "@/lib/database/browser"
 import { ThumbnailUploadInput } from "@/components/admin/thumbnail-upload-input"
 import { courseSchema } from "@/lib/validations/lms"
 
@@ -37,7 +37,7 @@ afterEach(() => vi.unstubAllGlobals())
 function setup() {
   const { mock } = createSupabaseMock()
   mock.from("courses").single.mockResolvedValue({ data: { id: "course-1" }, error: null })
-  vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as never)
+  vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as never)
   return mock.from("courses")
 }
 
@@ -53,7 +53,7 @@ describe("course creation with uploaded thumbnails", () => {
   it.each(["Useful Course", "a".repeat(79) + " course"])("creates %s through the actual file upload and hidden FormData value", async title => {
     const courses = setup()
     const uploadToSignedUrl = vi.fn().mockResolvedValue({ error: null })
-    vi.mocked(createSupabaseBrowserClient).mockReturnValue({ storage: { from: vi.fn(() => ({ uploadToSignedUrl, getPublicUrl: () => ({ data: { publicUrl: thumbnail } }) })) } } as never)
+    vi.mocked(createDatabaseBrowserClient).mockReturnValue({ storage: { from: vi.fn(() => ({ uploadToSignedUrl, getPublicUrl: () => ({ data: { publicUrl: thumbnail } }) })) } } as never)
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ path: "course-thumbnails/image.png", token: "signed-token" }) }))
     const { container } = render(<form><ThumbnailUploadInput name="thumbnail_url" /></form>)
     const file = new File(["image"], "image.png", { type: "image/png" })

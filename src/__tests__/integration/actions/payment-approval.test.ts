@@ -3,12 +3,12 @@ import { createSupabaseMock } from "@/test/mocks/supabase"
 
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
 vi.mock("@/lib/email/send", () => ({ sendTransactionalEmail: vi.fn() }))
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { sendTransactionalEmail } from "@/lib/email/send"
 import { reviewPaymentAction } from "@/actions/admin"
 
@@ -30,7 +30,7 @@ function setup() {
   const rpc = vi.fn()
   mock.auth.admin.createUser.mockResolvedValue({ data: { user: { id: "auth-1" } }, error: null })
   mock.auth.admin.generateLink.mockResolvedValue({ data: { properties: { action_link: "https://auth.example/verify?token=test&redirect_to=callback" } }, error: null })
-  vi.mocked(createSupabaseAdminClient).mockReturnValue({ ...mock, rpc } as unknown as ReturnType<typeof createSupabaseAdminClient>)
+  vi.mocked(createDatabaseAdminClient).mockReturnValue({ ...mock, rpc } as unknown as ReturnType<typeof createDatabaseAdminClient>)
   return { mock, rpc }
 }
 function response(data: object) { return { data: structuredClone(data), error: null } }
@@ -279,7 +279,7 @@ describe("payment approval orchestration (mocked Auth, RPC and email)", () => {
   it("rejects non-admins before creating a service-role client", async () => {
     vi.mocked(requireAdmin).mockRejectedValue(new Error("private"))
     expect((await reviewPaymentAction(undefined, form())).ok).toBe(false)
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+    expect(createDatabaseAdminClient).not.toHaveBeenCalled()
   })
 
   it("rejects invalid input before any database/Auth calls", async () => {

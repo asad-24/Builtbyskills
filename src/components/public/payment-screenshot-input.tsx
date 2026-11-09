@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
+import { createDatabaseBrowserClient } from "@/lib/database/browser"
 
 const allowedTypes = ["image/png", "image/jpeg", "image/webp", "application/pdf"]
 
@@ -55,7 +55,7 @@ export function PaymentScreenshotInput({ error }: { error?: string } = {}) {
 
       const { path: signedPath, token } = await signed.json()
       if (attempt !== uploadAttempt.current) return
-      const supabase = createSupabaseBrowserClient()
+      const supabase = createDatabaseBrowserClient()
       const { error } = await supabase.storage
         .from("payment-screenshots")
         .uploadToSignedUrl(signedPath, token, file)

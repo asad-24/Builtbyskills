@@ -5,8 +5,8 @@ vi.mock("server-only", () => ({}))
 
 const mockCreateSignedUploadUrl = vi.fn()
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: vi.fn(() => ({
+vi.mock("@/lib/database/admin", () => ({
+  createDatabaseAdminClient: vi.fn(() => ({
     storage: {
       from: vi.fn(() => ({
         createSignedUploadUrl: mockCreateSignedUploadUrl,

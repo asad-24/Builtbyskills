@@ -3,12 +3,12 @@ import "server-only"
 import { AppAuthError, AppForbiddenError, MissingEnvironmentError } from "@/lib/errors"
 import { requireRole } from "@/lib/auth/session"
 import { enrollmentIsActive } from "@/lib/permissions"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import type { AppResult, SectionWithLessons } from "@/types/lms"
 
 function appError(error: unknown): AppResult<never> {
   if (error instanceof MissingEnvironmentError) {
-    return { ok: false, reason: "missing_env", message: `Configure ${error.keys.join(", ")} to connect Supabase.` }
+    return { ok: false, reason: "missing_env", message: `Configure ${error.keys.join(", ")} to connect MongoDB.` }
   }
   if (error instanceof AppAuthError) return { ok: false, reason: "unauthorized", message: error.message }
   if (error instanceof AppForbiddenError) return { ok: false, reason: "forbidden", message: error.message }
@@ -18,7 +18,7 @@ function appError(error: unknown): AppResult<never> {
 export async function getStudentDashboardData() {
   try {
     const profile = await requireRole(["student"])
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const [enrollments, progress, payments] = await Promise.all([
       supabase
         .from("enrollments")
@@ -32,7 +32,7 @@ export async function getStudentDashboardData() {
     const historyError = [enrollments, progress, payments].find((result) => result.error)
     if (historyError?.error) throw historyError.error
 
-    // Service-role queries bypass RLS. Derive access from this student's own
+    // Privileged queries derive access from this student's own
     // enrollments using the same status/time-window rules as lesson access.
     const authorizedCourseIds = [...new Set(
       (enrollments.data ?? []).filter(enrollment => enrollmentIsActive(enrollment) && enrollment.course?.status === "published").map((enrollment) => enrollment.course_id as string)

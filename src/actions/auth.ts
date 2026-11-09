@@ -1,18 +1,17 @@
 "use server"
 
 import { redirect } from "next/navigation"
-import { isAuthRetryableFetchError } from "@supabase/supabase-js"
 
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createDatabaseServerClient } from "@/lib/database/server"
 
 export async function signInAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
-  const supabase = await createSupabaseServerClient()
+  const supabase = await createDatabaseServerClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    const message = isAuthRetryableFetchError(error)
+    const message = error.code === "AUTH_UNAVAILABLE"
       ? "Sign-in is temporarily unavailable. Please try again shortly."
       : error.message
     redirect(`/login?error=${encodeURIComponent(message)}`)
@@ -44,14 +43,14 @@ export async function signInAction(formData: FormData) {
 }
 
 export async function signOutAction() {
-  const supabase = await createSupabaseServerClient()
+  const supabase = await createDatabaseServerClient()
   await supabase.auth.signOut()
   redirect("/login")
 }
 
 export async function forgotPasswordAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
-  const supabase = await createSupabaseServerClient({ passwordRecovery: true })
+  const supabase = await createDatabaseServerClient({ passwordRecovery: true })
   const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/reset-password`
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
 

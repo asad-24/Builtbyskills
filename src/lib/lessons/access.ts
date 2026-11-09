@@ -2,12 +2,12 @@ import "server-only"
 import { requireRole } from "@/lib/auth/session"
 import { AppForbiddenError } from "@/lib/errors"
 import { enrollmentIsActive } from "@/lib/permissions"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 
-// Service-role callers must enforce the same published + enrollment rules as RLS.
+// Privileged database callers must enforce published-course and enrollment rules.
 export async function requireStudentLesson(lessonId: string) {
   const profile = await requireRole(["student"])
-  const supabase = createSupabaseAdminClient()
+  const supabase = createDatabaseAdminClient()
   const { data: lesson, error } = await supabase.from("lessons")
     .select("*, section:course_sections(course_id)").eq("id", lessonId).eq("status", "published").single()
   if (error || !lesson || lesson.status !== "published") throw new AppForbiddenError("This lesson is not available for your account.")

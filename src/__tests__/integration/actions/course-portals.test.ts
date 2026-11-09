@@ -3,11 +3,11 @@ import { createSupabaseMock } from "@/test/mocks/supabase"
 vi.mock("server-only", () => ({}))
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 vi.mock("@/lib/auth/session", () => ({ requireRole: vi.fn(), requireAdmin: vi.fn() }))
-vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: vi.fn() }))
+vi.mock("@/lib/database/server", () => ({ createDatabaseServerClient: vi.fn() }))
 vi.mock("@/lib/env", () => ({ getPublicEnv: () => ({ siteUrl: "https://academy.test" }) }))
 vi.mock("next/navigation", () => ({ redirect: (path: string) => { throw new Error(`REDIRECT:${path}`) } }))
 import { requireRole, requireAdmin } from "@/lib/auth/session"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createDatabaseServerClient } from "@/lib/database/server"
 import { requireCourseAccess } from "@/lib/courses/portal-access"
 import { saveInstructorClassAction, saveInstructorRecordingAction } from "@/actions/instructor"
 import { manageInstructorAssignmentAction } from "@/actions/portal-admin"
@@ -22,7 +22,7 @@ let db: ReturnType<typeof createSupabaseMock>["mock"]
 beforeEach(() => {
   vi.clearAllMocks()
   db = createSupabaseMock().mock
-  vi.mocked(createSupabaseServerClient).mockResolvedValue(db as never)
+  vi.mocked(createDatabaseServerClient).mockResolvedValue(db as never)
   vi.mocked(requireRole).mockResolvedValue({ id: teacherId, role: "instructor", status: "active" } as never)
   vi.mocked(requireAdmin).mockResolvedValue({ id: "admin" } as never)
   db.from("instructor_courses").maybeSingle.mockResolvedValue({ data: { id: "assignment" }, error: null })

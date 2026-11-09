@@ -2,14 +2,14 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createDatabaseServerClient } from "@/lib/database/server"
 
 export async function manageInstructorAssignmentAction(_: { ok: boolean; message: string } | undefined, formData: FormData) {
   try {
     await requireAdmin()
     const parsed = z.object({ course_id: z.string().uuid(), instructor_id: z.string().uuid(), assigned: z.enum(["true", "false"]) }).safeParse(Object.fromEntries(formData))
     if (!parsed.success) return { ok: false, message: "Choose a course and instructor." }
-    const supabase = await createSupabaseServerClient()
+    const supabase = await createDatabaseServerClient()
     const { error } = await supabase.rpc("manage_course_instructor", {
       p_course_id: parsed.data.course_id, p_instructor_id: parsed.data.instructor_id, p_assigned: parsed.data.assigned === "true",
     })

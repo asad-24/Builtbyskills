@@ -2,7 +2,7 @@ import "server-only"
 
 import { AppAuthError, AppForbiddenError, MissingEnvironmentError } from "@/lib/errors"
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import type { AdminStats, AppResult, Course, CourseWithCurriculum, Profile, SectionWithLessons } from "@/types/lms"
 
 type PersonRef = Pick<Profile, "id" | "full_name" | "email"> & Partial<Pick<Profile, "status">>
@@ -111,13 +111,13 @@ function getSetupErrorMessage(error: unknown) {
     const message = (error as { message?: unknown }).message
     if (typeof message === "string" && message.trim()) {
       if (message.toLowerCase().includes("invalid api key")) {
-        return "Supabase server key is invalid. Update SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) in Vercel and redeploy."
+        return "Database credentials are invalid. Update MONGODB_URI in Vercel and redeploy."
       }
       return message
     }
   }
 
-  return "Unable to load enrollment data. Check the Supabase URL and service role key in Vercel."
+  return "Unable to load enrollment data. Check the MongoDB connection in Vercel."
 }
 
 function appError(error: unknown): AppResult<never> {
@@ -125,7 +125,7 @@ function appError(error: unknown): AppResult<never> {
     return {
       ok: false,
       reason: "missing_env",
-      message: `Configure ${error.keys.join(", ")} to connect Builtbyskills to Supabase.`,
+      message: `Configure ${error.keys.join(", ")} to connect Builtbyskills to MongoDB.`,
     }
   }
   if (error instanceof AppAuthError) {
@@ -141,7 +141,7 @@ function appError(error: unknown): AppResult<never> {
   }
 }
 
-async function countRows(supabase: ReturnType<typeof createSupabaseAdminClient>, table: string, filters: Record<string, unknown> = {}) {
+async function countRows(supabase: ReturnType<typeof createDatabaseAdminClient>, table: string, filters: Record<string, unknown> = {}) {
   let query = supabase.from(table).select("id", { count: "exact", head: true })
   Object.entries(filters).forEach(([key, value]) => {
     query = query.eq(key, value)
@@ -154,7 +154,7 @@ async function countRows(supabase: ReturnType<typeof createSupabaseAdminClient>,
 export async function getAdminWorkspaceData(pagination?: { entity: "courses" | "instructors" | "students" | "enrollments"; page?: string }): Promise<AppResult<AdminWorkspaceData>> {
   try {
     await requireAdmin()
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const now = new Date().toISOString()
     const requested = Number(pagination?.page ?? 1)
     const page = Number.isSafeInteger(requested) && requested > 0 ? Math.min(requested, 100000) : 1
@@ -297,7 +297,7 @@ export async function getAdminWorkspaceData(pagination?: { entity: "courses" | "
 export async function getCourseBuilderData(courseId: string): Promise<AppResult<CourseBuilderData>> {
   try {
     const admin = await requireAdmin()
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const [course, instructors, sections] = await Promise.all([
       supabase.from("courses").select("*").eq("id", courseId).single(),
       supabase.from("profiles").select("id, full_name, email").eq("role", "instructor"),
@@ -353,7 +353,7 @@ export async function getCourseBuilderData(courseId: string): Promise<AppResult<
 
 export async function getPublicCourses() {
   try {
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data, error } = await supabase
       .from("courses")
       .select("*")
@@ -370,7 +370,7 @@ export async function getPublicCourses() {
 
 export async function getPublicCourseBySlug(slug: string) {
   try {
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data, error } = await supabase
       .from("courses")
       .select("*, course_sections(*, lessons(id,title,lesson_type,status,position,is_preview))")
@@ -391,7 +391,7 @@ export async function getPublicCourseBySlug(slug: string) {
 
 export async function getEnrollmentPageData() {
   try {
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const [courses, paymentMethods] = await Promise.all([
       supabase
         .from("courses")

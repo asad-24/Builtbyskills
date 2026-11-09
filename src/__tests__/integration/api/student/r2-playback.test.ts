@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireRole: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
 const { send, sign } = vi.hoisted(() => ({ send: vi.fn(), sign: vi.fn() }))
 vi.mock("@aws-sdk/s3-request-presigner", () => ({ getSignedUrl: sign }))
 vi.mock("@/lib/r2/server", () => ({ getR2Client: () => ({ send }), getR2Config: () => ({ bucket: "builtbyskills-course-videos" }) }))
 import { requireRole } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { AppAuthError, AppForbiddenError } from "@/lib/errors"
 import { GET, HEAD } from "@/app/api/student/videos/[lessonId]/route"
 import { parseVideoRange } from "@/lib/r2/playback"
@@ -18,7 +18,7 @@ function setup() {
   fixture.db.from("lessons").single.mockResolvedValue({ data: { id: ids.lesson, video_asset_id: ids.asset, lesson_type: "video", status: "published", section: { course_id: ids.course } }, error: null })
   fixture.db.from("courses").single.mockResolvedValue({ data: { id: ids.course, status: "published" }, error: null })
   fixture.db.from("enrollments").single.mockResolvedValue({ data: { id: "enrollment", status: "active", starts_at: null, expires_at: null }, error: null })
-  vi.mocked(createSupabaseAdminClient).mockReturnValue(fixture.db as never)
+  vi.mocked(createDatabaseAdminClient).mockReturnValue(fixture.db as never)
   return { ...fixture, asset }
 }
 function call(range?: string, method = "GET") {

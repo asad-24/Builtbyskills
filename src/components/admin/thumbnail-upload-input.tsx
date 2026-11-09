@@ -3,7 +3,7 @@
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
+import { createDatabaseBrowserClient } from "@/lib/database/browser"
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"]
 const MAX_SIZE = 5 * 1024 * 1024
@@ -31,7 +31,7 @@ export function ThumbnailUploadInput({ name, defaultValue }: { name: string; def
       }
 
       const { path: signedPath, token } = await signed.json()
-      const supabase = createSupabaseBrowserClient()
+      const supabase = createDatabaseBrowserClient()
       const { error } = await supabase.storage
         .from("course-thumbnails")
         .uploadToSignedUrl(signedPath, token, file)

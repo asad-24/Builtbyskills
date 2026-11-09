@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createSupabaseMock } from "@/test/mocks/supabase"
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 vi.mock("@/lib/email/send", () => ({ sendTransactionalEmail: vi.fn() }))
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { createCourseAction, createLessonAction, createSectionAction, updateLessonAction, updateSectionAction } from "@/actions/admin"
 import { AppForbiddenError } from "@/lib/errors"
 
@@ -15,7 +15,7 @@ const fields = { section_id: id, title: "A useful lesson", description: "Lesson 
 function form(values: Record<string, string>) { const data = new FormData(); for (const [key, value] of Object.entries(values)) data.set(key, value); return data }
 function setup() {
   const { mock } = createSupabaseMock()
-  vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as never)
+  vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as never)
   return { mock, lessons: mock.from("lessons"), sections: mock.from("course_sections") }
 }
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(requireAdmin).mockResolvedValue({ id: "admin", role: "super_admin" } as never) })
@@ -75,7 +75,7 @@ describe("course builder mutations", () => {
   })
   it("does not accept browser-supplied Mux IDs during creation", async () => {
     expect((await createLessonAction(undefined, form({ ...fields, lesson_type: "video", mux_asset_id: "untrusted" }))).ok).toBe(false)
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+    expect(createDatabaseAdminClient).not.toHaveBeenCalled()
   })
   it("returns friendly validation instead of Zod JSON", async () => {
     const result = await createLessonAction(undefined, form({ ...fields, title: "", section_id: "invalid" }))
@@ -85,7 +85,7 @@ describe("course builder mutations", () => {
   it.each([createCourseAction, createSectionAction, createLessonAction, updateLessonAction, updateSectionAction])("requires admin authorization", async action => {
     vi.mocked(requireAdmin).mockRejectedValue(new AppForbiddenError())
     expect((await action(undefined, form(fields))).ok).toBe(false)
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+    expect(createDatabaseAdminClient).not.toHaveBeenCalled()
   })
   it("automates course addresses while retaining all course lifecycle states", async () => {
     const { mock } = setup()

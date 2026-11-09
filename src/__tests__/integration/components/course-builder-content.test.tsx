@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}))
 vi.mock("@/features/admin/data", () => ({ getCourseBuilderData: vi.fn() }))
 vi.mock("@/actions/admin", () => ({ createCourseDraftAction: vi.fn(), updateCoursePublicationAction: vi.fn(), updateCourseAction: vi.fn(), createLessonAction: vi.fn(), updateLessonAction: vi.fn(), createSectionAction: vi.fn(), updateSectionAction: vi.fn() }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
-vi.mock("@/lib/supabase/browser", () => ({ createSupabaseBrowserClient: vi.fn() }))
+vi.mock("@/lib/database/browser", () => ({ createDatabaseBrowserClient: vi.fn() }))
 import { getCourseBuilderData } from "@/features/admin/data"
 import CourseBuilderPage from "@/app/admin/course-builder/[courseId]/page"
 

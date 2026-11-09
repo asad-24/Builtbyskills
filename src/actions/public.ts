@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 
 import { emailTemplates } from "@/emails/templates"
 import { sendTransactionalEmail } from "@/lib/email/send"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { contactSchema, enrollmentRequestSchema } from "@/lib/validations/lms"
 
 type ActionState = {
@@ -23,7 +23,7 @@ function formObject(formData: FormData) {
 export async function submitContactAction(_: ActionState | undefined, formData: FormData) {
   try {
     const parsed = contactSchema.parse(formObject(formData))
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { error } = await supabase.from("contact_submissions").insert(parsed)
     if (error) return fail(error.message)
     revalidatePath("/admin/contact-submissions")
@@ -45,7 +45,7 @@ export async function submitEnrollmentAction(_: ActionState | undefined, formDat
       return { ok: false, message: "Please check the highlighted fields.", fieldErrors }
     }
     const parsed = validation.data
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data: course, error: courseError } = await supabase
       .from("courses")
       .select("title, price, currency")

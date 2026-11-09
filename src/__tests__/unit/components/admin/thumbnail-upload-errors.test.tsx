@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-vi.mock("@/lib/supabase/browser", () => ({ createSupabaseBrowserClient: vi.fn() }))
+vi.mock("@/lib/database/browser", () => ({ createDatabaseBrowserClient: vi.fn() }))
 import { ThumbnailUploadInput } from "@/components/admin/thumbnail-upload-input"
 afterEach(() => vi.unstubAllGlobals())
 describe("course image upload error privacy", () => {

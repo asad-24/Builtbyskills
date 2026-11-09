@@ -6,8 +6,8 @@ import { render, screen, waitFor } from "@/test/utils/render"
 const upload = vi.fn()
 const fetchUpload = vi.fn()
 
-vi.mock("@/lib/supabase/browser", () => ({
-  createSupabaseBrowserClient: vi.fn(() => ({
+vi.mock("@/lib/database/browser", () => ({
+  createDatabaseBrowserClient: vi.fn(() => ({
     storage: {
       from: vi.fn(() => ({
         uploadToSignedUrl: upload,

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { requireRole } from "@/lib/auth/session"
 import { requireCourseAccess } from "@/lib/courses/portal-access"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createDatabaseServerClient } from "@/lib/database/server"
 import { safeExternalUrl } from "@/lib/validations/course-builder"
 import { AppAuthError, AppForbiddenError } from "@/lib/errors"
 
@@ -12,7 +12,7 @@ export async function openStudentCourseLink(kind: "class" | "recording", id: str
   try {
     await requireRole(["student"])
     if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ message: "Link not found." }, { status: 404, headers })
-    const supabase = await createSupabaseServerClient()
+    const supabase = await createDatabaseServerClient()
     const { data, error } = kind === "class"
       ? await supabase.from("live_classes").select("course_id,meeting_url,status").eq("id", id).in("status", ["scheduled", "live"]).maybeSingle()
       : await supabase.from("course_recordings").select("course_id,recording_url,is_published").eq("id", id).eq("is_published", true).maybeSingle()

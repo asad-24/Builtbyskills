@@ -1,3 +1,5 @@
+> Historical Supabase implementation notes. The current application uses MongoDB Atlas and Better Auth; follow [README.md](../README.md) for current setup and verification.
+
 # Course portals and access control
 
 This extends the existing Supabase Auth/PostgreSQL LMS. Existing R2 video authoring, lesson playback, payment approval, password recovery, public pages, and enrollment history remain in use.

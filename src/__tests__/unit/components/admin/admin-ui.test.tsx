@@ -175,7 +175,7 @@ describe("PageHeader", () => {
 describe("SetupNotice", () => {
   it("renders message", () => {
     render(<SetupNotice message="Supabase not configured" />)
-    expect(screen.getByText("Supabase setup needed")).toBeInTheDocument()
+    expect(screen.getByText("Database setup needed")).toBeInTheDocument()
     expect(screen.getByText("Supabase not configured")).toBeInTheDocument()
   })
 })

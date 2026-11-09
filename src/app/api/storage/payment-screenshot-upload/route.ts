@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 
 const requestSchema = z.object({
   fileName: z.string().min(3),
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   const parsed = requestSchema.parse(await request.json())
   const extension = parsed.fileName.split(".").pop()?.toLowerCase() ?? "upload"
   const path = `public-enrollment/${crypto.randomUUID()}.${extension}`
-  const supabase = createSupabaseAdminClient()
+  const supabase = createDatabaseAdminClient()
   const { data, error } = await supabase.storage
     .from("payment-screenshots")
     .createSignedUploadUrl(path)

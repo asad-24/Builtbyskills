@@ -4,10 +4,10 @@ import { AppForbiddenError } from "@/lib/errors"
 
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
 
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { getCourseBuilderData } from "@/features/admin/data"
 
 const legacyLesson = { id: "lesson", youtube_video_id: "abcdefghijk", lesson_resources: [{ id: "resource" }] }
@@ -15,7 +15,7 @@ const legacySections = [{ id: "section", lessons: [legacyLesson] }]
 
 function setup(sections: unknown = legacySections) {
   const { mock } = createSupabaseMock()
-  vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as never)
+  vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as never)
   mock.from("courses").single.mockResolvedValue({ data: { id: "course" }, error: null })
   mock.from("profiles").setResolveWith([{ id: "instructor" }])
   const curriculum = mock.from("course_sections")
@@ -79,6 +79,6 @@ describe("Course Builder schema compatibility", () => {
     setup()
     vi.mocked(requireAdmin).mockRejectedValue(new AppForbiddenError())
     expect(await getCourseBuilderData("course")).toMatchObject({ ok: false, reason: "forbidden" })
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+    expect(createDatabaseAdminClient).not.toHaveBeenCalled()
   })
 })

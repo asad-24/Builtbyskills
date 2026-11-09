@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
 vi.mock("@/lib/r2/playback", () => ({ presignVideoPlayback: vi.fn() }))
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { presignVideoPlayback } from "@/lib/r2/playback"
 import { AppAuthError, AppForbiddenError } from "@/lib/errors"
 import { GET } from "@/app/api/admin/lesson-videos/preview/route"
@@ -13,7 +13,7 @@ function setup() {
   const fixture = videoFixture()
   Object.assign(fixture.asset, { state: "ready", verified_bytes: 100, object_etag: '"immutable"' })
   fixture.db.from("lessons").single.mockResolvedValue({ data: { id: ids.lesson, lesson_type: "video", status: "draft", video_asset_id: ids.asset, section: { course_id: ids.course } }, error: null })
-  vi.mocked(createSupabaseAdminClient).mockReturnValue(fixture.db as never)
+  vi.mocked(createDatabaseAdminClient).mockReturnValue(fixture.db as never)
   return fixture
 }
 function call(upload = false, extra = "") { return GET(new Request(`https://academy.example.com/api/admin/lesson-videos/preview?lessonId=${ids.lesson}${upload ? `&uploadId=${ids.upload}` : ""}${extra}`)) }

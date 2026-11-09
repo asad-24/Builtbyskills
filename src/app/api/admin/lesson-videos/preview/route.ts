@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { assertAssetKey, loadUpload, type VideoAsset } from "@/lib/r2/uploads"
 import { presignVideoPlayback } from "@/lib/r2/playback"
 import { videoError, videoJson, VideoRequestError } from "@/lib/r2/http"
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const parsed = z.object({ lessonId: z.string().uuid(), uploadId: z.string().uuid().optional() }).strict().safeParse(Object.fromEntries(new URL(request.url).searchParams))
     if (!parsed.success) return videoJson({ error: "Video unavailable." }, 400)
     const { lessonId, uploadId } = parsed.data
-    const db = createSupabaseAdminClient()
+    const db = createDatabaseAdminClient()
     const { data: lesson, error } = await db.from("lessons").select("id, lesson_type, video_asset_id, section:course_sections(course_id)").eq("id", lessonId).single()
     const section = Array.isArray(lesson?.section) ? lesson.section[0] : lesson?.section
     if (error || !lesson || lesson.lesson_type !== "video" || !section?.course_id) throw new VideoRequestError(404, "Video unavailable.")

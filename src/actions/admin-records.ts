@@ -3,7 +3,7 @@
 import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 
 const identity = z.object({ id: z.string().uuid(), updated_at: z.string().datetime({ offset: true }) })
 const edit = identity.extend({ full_name: z.string().trim().min(3), phone: z.string().trim().max(100), whatsapp: z.string().trim().max(100), status: z.enum(["active", "inactive", "suspended"]) })
@@ -16,7 +16,7 @@ async function mutate(kind: "instructor" | "contact" | "payment", formData: Form
     const parsed = (editing ? edit : identity).safeParse(Object.fromEntries(formData))
     if (!parsed.success || (!editing && formData.get("confirmed") !== "true")) return { ok: false, message: "Confirm the action and refresh the page before trying again." }
     const { id, updated_at } = parsed.data
-    const db = createSupabaseAdminClient()
+    const db = createDatabaseAdminClient()
     if (kind === "payment") {
       const { data, error } = await db.rpc("delete_unreferenced_payment_method", { target_id: id, expected_updated_at: updated_at, actor_profile_id: actor.id })
       if (error) return { ok: false, message: error.code === "23503" ? "This method has payment history. Deactivate it instead; previous payments will be preserved." : "We could not delete this method. Please try again or contact support." }

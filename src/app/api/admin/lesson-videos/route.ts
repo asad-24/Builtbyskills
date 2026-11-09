@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { beginUpload, beginVideoSchema, cancelUpload, completeUpload, loadUpload, signPart } from "@/lib/r2/uploads"
 import { requireVideoOrigin, videoError, videoJson, VideoRequestError } from "@/lib/r2/http"
 
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const requestBody = requestSchema.safeParse(raw)
     if (!requestBody.success) throw new VideoRequestError(400, "Choose a saved lesson and an MP4 video up to 1 GB. Refresh and retry.")
     const body = requestBody.data
-    const db = createSupabaseAdminClient()
+    const db = createDatabaseAdminClient()
     if (body?.operation === "begin") {
       const parsed = beginVideoSchema.safeParse(body.input)
       if (!parsed.success) throw new VideoRequestError(400, "Choose an MP4 video up to 1 GB and save the lesson first.")

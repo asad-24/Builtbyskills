@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  distDir: process.env.LMS_E2E === "1" ? ".next-lms-test" : ".next",
+  distDir: process.env.MONGODB_E2E === "1" ? ".next-mongodb-e2e" : process.env.LMS_E2E === "1" ? ".next-lms-test" : ".next",
   images: {
     remotePatterns: [
       {

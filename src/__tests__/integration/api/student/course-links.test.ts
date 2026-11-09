@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createSupabaseMock } from "@/test/mocks/supabase"
 vi.mock("server-only",()=>({}))
 vi.mock("@/lib/auth/session",()=>({requireRole:vi.fn()}))
-vi.mock("@/lib/supabase/server",()=>({createSupabaseServerClient:vi.fn()}))
+vi.mock("@/lib/database/server",()=>({createDatabaseServerClient:vi.fn()}))
 import { requireRole } from "@/lib/auth/session"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createDatabaseServerClient } from "@/lib/database/server"
 import { openStudentCourseLink } from "@/lib/courses/open-link"
 import { AppAuthError } from "@/lib/errors"
 const id="40000000-0000-4000-8000-000000000003", courseId="20000000-0000-4000-8000-000000000003"
@@ -12,7 +12,7 @@ let db:ReturnType<typeof createSupabaseMock>["mock"]
 beforeEach(()=>{
   vi.clearAllMocks();db=createSupabaseMock().mock
   vi.mocked(requireRole).mockResolvedValue({id:"student",role:"student",status:"active"} as never)
-  vi.mocked(createSupabaseServerClient).mockResolvedValue(db as never)
+  vi.mocked(createDatabaseServerClient).mockResolvedValue(db as never)
   db.from("course_recordings").maybeSingle.mockResolvedValue({data:{course_id:courseId,recording_url:"https://example.com/recording",is_published:true},error:null})
   db.from("live_classes").maybeSingle.mockResolvedValue({data:{course_id:courseId,meeting_url:"https://meet.google.com/test",status:"live"},error:null})
   db.from("live_classes").in=vi.fn(()=>db.from("live_classes"))

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { lessonHttpError, privateHeaders } from "@/lib/lessons/http"
 import { RESOURCE_TYPES, RESOURCE_MAX_SIZE } from "@/lib/lessons/resources"
 import { safeExternalUrlSchema } from "@/lib/validations/course-builder"
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const payload = await request.json().catch(() => null)
     const parsed = identity.safeParse(payload)
     if (!parsed.success) return NextResponse.json({ error: "Choose a saved lesson first." }, { status: 400 })
-    const db = createSupabaseAdminClient()
+    const db = createDatabaseAdminClient()
     const { data: lesson, error } = await db.from("lessons").select("id, section:course_sections(course_id)").eq("id", parsed.data.lessonId).single()
     if (error || !lesson) return NextResponse.json({ error: "This lesson is unavailable." }, { status: 404 })
     const bucket = db.storage.from("lesson-resources")

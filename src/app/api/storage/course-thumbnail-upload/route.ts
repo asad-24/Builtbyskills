@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { requireAdmin } from "@/lib/auth/session"
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"] as const
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   const path = `course-thumbnails/${crypto.randomUUID()}.${extension}`
 
   try {
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data, error } = await supabase.storage
       .from("course-thumbnails")
       .createSignedUploadUrl(path)

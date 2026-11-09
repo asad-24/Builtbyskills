@@ -1,10 +1,10 @@
 import "server-only"
 import { AbortMultipartUploadCommand, DeleteObjectCommand } from "@aws-sdk/client-s3"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { getR2Client, getR2Config } from "@/lib/r2/server"
 import { assertAssetKey, type VideoAsset } from "@/lib/r2/uploads"
 
-export async function cleanupVideos(db = createSupabaseAdminClient()) {
+export async function cleanupVideos(db = createDatabaseAdminClient()) {
   const now = new Date().toISOString()
   // Database locks serialize expiration against attachment and cleanup.
   const { error } = await db.rpc("retire_expired_lesson_videos")

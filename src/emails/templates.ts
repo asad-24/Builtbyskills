@@ -57,7 +57,7 @@ export const emailTemplates = {
       `<p>Hi ${escapeHtml(name ?? "there")}, your student account is ready.</p>${actionUrl ? `<p><a href="${escapeHtml(actionUrl)}" style="color:#3f6212;font-weight:700;">Set your password</a></p>` : ""}`
     ),
   passwordReset: ({ actionUrl }: TemplateInput) =>
-    shell("Reset your password", actionUrl ? `<p><a href="${escapeHtml(actionUrl)}" style="color:#3f6212;font-weight:700;">Reset password</a></p>` : "<p>Use the password reset link sent by Supabase.</p>"),
+    shell("Reset your password", actionUrl ? `<p><a href="${escapeHtml(actionUrl)}" style="color:#3f6212;font-weight:700;">Reset password</a></p>` : "<p>Use the password reset link sent by Builtbyskills.</p>"),
   liveClassReminder: ({ title, body }: TemplateInput) =>
     shell(title ?? "Upcoming live class", `<p>${body ?? "You have an upcoming Builtbyskills live class."}</p>`),
   newAnnouncement: ({ title, body }: TemplateInput) =>

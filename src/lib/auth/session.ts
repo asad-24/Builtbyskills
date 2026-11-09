@@ -3,11 +3,11 @@ import "server-only"
 import { redirect } from "next/navigation"
 
 import { AppAuthError, AppForbiddenError, MissingEnvironmentError } from "@/lib/errors"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createDatabaseServerClient } from "@/lib/database/server"
 import type { Profile, UserRole } from "@/types/lms"
 
 export async function getCurrentProfile(): Promise<Profile | null> {
-  const supabase = await createSupabaseServerClient()
+  const supabase = await createDatabaseServerClient()
   const {
     data: { user },
     error: userError,

@@ -66,7 +66,7 @@ export function AdminShell({
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
               <p className="text-sm font-medium">{profile?.full_name ?? "Setup required"}</p>
-              <p className="text-xs text-slate-500">{profile?.email ?? "Connect Supabase to sign in"}</p>
+              <p className="text-xs text-slate-500">{profile?.email ?? "Sign in to your account"}</p>
             </div>
             <form action={signOutAction}>
               <Button variant="outline" size="sm" type="submit">

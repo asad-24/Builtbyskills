@@ -3,9 +3,9 @@ import { NextRequest } from "next/server"
 import { createSupabaseMock } from "@/test/mocks/supabase"
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireRole: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
 import { requireRole } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { AppAuthError, AppForbiddenError } from "@/lib/errors"
 import { POST as progress } from "@/app/api/student/progress/route"
 import { GET as download } from "@/app/api/student/resources/[resourceId]/route"
@@ -19,7 +19,7 @@ function setup(lessonOverrides = {}, enrollmentOverrides = {}) {
   const { mock } = createSupabaseMock()
   const sign = vi.fn().mockResolvedValue({ data: { signedUrl: "https://storage.example.com/private-file?token=short-lived" }, error: null })
   const bucket = vi.fn(() => ({ createSignedUrl: sign }))
-  vi.mocked(createSupabaseAdminClient).mockReturnValue({ ...mock, storage: { from: bucket } } as never)
+  vi.mocked(createDatabaseAdminClient).mockReturnValue({ ...mock, storage: { from: bucket } } as never)
   mock.from("lessons").single.mockResolvedValue({ data: { id, status: "published", lesson_type: "video", mux_playback_id: "legacy-playback", duration_seconds: 300, section: { course_id: id }, ...lessonOverrides }, error: null })
   mock.from("enrollments").single.mockResolvedValue({ data: { id: "enrollment", student_id: student, course_id: id, status: "active", starts_at: null, expires_at: null, ...enrollmentOverrides }, error: null })
   mock.from("lesson_resources").single.mockResolvedValue({ data: { id, lesson_id: id, title: "Handout.pdf", file_path: "legacy/private.pdf", resource_type: "application/pdf" }, error: null })
@@ -46,7 +46,7 @@ describe("published enrolled lesson authorization", () => {
     vi.mocked(requireRole).mockRejectedValue(error)
     expect((await getStudentLessonData(id)).ok).toBe(false)
     expect(requireRole).toHaveBeenCalledWith(["student"])
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+    expect(createDatabaseAdminClient).not.toHaveBeenCalled()
   })
   it("returns only an authorized YouTube ID and preserves saved resume/completion", async () => {
     const { mock } = setup({ youtube_video_id: "dQw4w9WgXcQ" })
@@ -69,7 +69,7 @@ describe("published enrolled lesson authorization", () => {
   it.each(Object.entries(paths))("requires student authorization for %s", async (_label, call) => {
     vi.mocked(requireRole).mockRejectedValue(new AppForbiddenError())
     expect((await call()).status).toBe(403)
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+    expect(createDatabaseAdminClient).not.toHaveBeenCalled()
   })
   it.each(["draft", "archived"])("denies %s content in every privileged entry point even with preview enabled", async status => {
     const { mock, sign } = setup({ status, is_preview: true })

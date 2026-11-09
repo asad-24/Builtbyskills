@@ -39,7 +39,7 @@ describe("emailTemplates", () => {
 
   it("renders passwordReset with fallback when no actionUrl", () => {
     const html = emailTemplates.passwordReset({})
-    expect(html).toContain("Supabase")
+    expect(html).toContain("Builtbyskills")
   })
 })
 

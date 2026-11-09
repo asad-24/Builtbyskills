@@ -7,7 +7,7 @@ import { CreateInstructorDialog } from "@/components/admin/instructor-actions"
 import { getAdminWorkspaceData } from "@/features/admin/data"
 import { InstructorAssignmentForm } from "@/components/admin/portal-management"
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createDatabaseServerClient } from "@/lib/database/server"
 import { formatDate } from "@/lib/format"
 
 export const metadata = {
@@ -19,7 +19,7 @@ export default async function AdminInstructorsPage({ searchParams }: { searchPar
   if (!result.ok) return <SetupNotice message={result.message} />
 
   await requireAdmin()
-  const supabase = await createSupabaseServerClient()
+  const supabase = await createDatabaseServerClient()
   const assignments = await supabase.from("instructor_courses").select("id,instructor_id,course_id")
   if (assignments.error) return <SetupNotice message="Unable to read teacher assignments. Please try again." />
   const instructorOptions = await getAdminPeopleOptions("instructor")

@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createSupabaseMock } from "@/test/mocks/supabase"
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }))
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }))
+vi.mock("@/lib/database/admin", () => ({ createDatabaseAdminClient: vi.fn() }))
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { AppForbiddenError } from "@/lib/errors"
 import { POST } from "@/app/api/admin/lesson-resources/route"
 const id = "550e8400-e29b-41d4-a716-446655440001"
@@ -18,7 +18,7 @@ function setup() {
   const signed = vi.fn().mockResolvedValue({ data: { token: "scoped-upload-token" }, error: null })
   const info = vi.fn().mockResolvedValue({ data: { size: 1000, contentType: "application/pdf" }, error: null })
   const bucket = vi.fn(() => ({ createSignedUploadUrl: signed, info }))
-  vi.mocked(createSupabaseAdminClient).mockReturnValue({ ...mock, storage: { from: bucket } } as never)
+  vi.mocked(createDatabaseAdminClient).mockReturnValue({ ...mock, storage: { from: bucket } } as never)
   mock.from("lessons").single.mockResolvedValue({ data: { id, section: { course_id: id } }, error: null })
   return { mock, signed, info, bucket }
 }
@@ -31,7 +31,7 @@ describe("private lesson resource authoring", () => {
   ])("requires admin before authoring resources: %j", async payload => {
     vi.mocked(requireAdmin).mockRejectedValue(new AppForbiddenError())
     expect((await POST(request(payload))).status).toBe(403)
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+    expect(createDatabaseAdminClient).not.toHaveBeenCalled()
   })
   it("creates a scoped private upload without creating a premature resource row", async () => {
     const { mock, signed, bucket } = setup()

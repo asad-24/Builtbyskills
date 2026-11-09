@@ -17,8 +17,8 @@ const mockSupabase = {
   },
 }
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: vi.fn(() => mockSupabase),
+vi.mock("@/lib/database/admin", () => ({
+  createDatabaseAdminClient: vi.fn(() => mockSupabase),
 }))
 
 vi.mock("@/lib/auth/session", () => ({

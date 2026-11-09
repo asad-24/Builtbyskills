@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createSupabaseMock } from "@/test/mocks/supabase"
 
 vi.mock("server-only", () => ({}))
-vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: vi.fn() }))
+vi.mock("@/lib/database/server", () => ({ createDatabaseServerClient: vi.fn() }))
 vi.mock("next/navigation", () => ({ redirect: vi.fn((path: string) => { throw new Error(`REDIRECT:${path}`) }) }))
 
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createDatabaseServerClient } from "@/lib/database/server"
 import AdminLayout from "@/app/admin/layout"
 import InstructorLayout from "@/app/instructor/layout"
 import StudentLayout from "@/app/student/layout"
@@ -23,7 +23,7 @@ describe("unchanged dashboard layout and real active-profile guards", () => {
       const { mock } = createSupabaseMock()
       mock.auth.getUser.mockResolvedValue({ data: { user: { id: "user-1" } } })
       mock.from("profiles").single.mockResolvedValue({ data: { id: "profile-1", role, status }, error: null })
-      vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as any)
+      vi.mocked(createDatabaseServerClient).mockResolvedValue(mock as any)
       await expect(layout({ children: null })).rejects.toThrow("REDIRECT:/login")
     })
 
@@ -31,7 +31,7 @@ describe("unchanged dashboard layout and real active-profile guards", () => {
       const { mock } = createSupabaseMock()
       mock.auth.getUser.mockResolvedValue({ data: { user: { id: "user-1" } } })
       mock.from("profiles").single.mockResolvedValue({ data: { id: "profile-1", role, status: "active" }, error: null })
-      vi.mocked(createSupabaseServerClient).mockResolvedValue(mock as any)
+      vi.mocked(createDatabaseServerClient).mockResolvedValue(mock as any)
       await expect(layout({ children: null })).resolves.toBeTruthy()
     })
   }

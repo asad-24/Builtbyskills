@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 
 import { requireAdmin } from "@/lib/auth/session"
 import { AppAuthError, AppForbiddenError } from "@/lib/errors"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 
 const headers = { "Cache-Control": "private, no-store" }
 
@@ -10,7 +10,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   try {
     await requireAdmin()
     const { id } = await params
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { data: payment, error } = await supabase
       .from("payment_submissions")
       .select("screenshot_path")

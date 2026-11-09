@@ -1,7 +1,7 @@
 import "server-only"
-import type { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import type { createDatabaseAdminClient } from "@/lib/database/admin"
 
-type Database = ReturnType<typeof createSupabaseAdminClient>
+type Database = ReturnType<typeof createDatabaseAdminClient>
 
 // Existing unique(parent, position) constraints arbitrate concurrent appends.
 // Re-read the highest position after a conflict; never shift existing rows.

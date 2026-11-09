@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
+import { createDatabaseBrowserClient } from "@/lib/database/browser"
 import { RESOURCE_TYPES, RESOURCE_MAX_SIZE } from "@/lib/lessons/resources"
 import { safeExternalUrl } from "@/lib/validations/course-builder"
 import { Button } from "@/components/ui/button"
@@ -34,7 +34,7 @@ export function LessonResources({ lessonId, resources, external, optional = fals
     setBusy(true); setFailed(false); setMessage("Uploading file...")
     try {
       const { path, token } = await post({ operation: "upload", contentType: file.type, size: file.size })
-      const { error } = await createSupabaseBrowserClient().storage.from("lesson-resources").uploadToSignedUrl(path, token, file, { contentType: file.type })
+      const { error } = await createDatabaseBrowserClient().storage.from("lesson-resources").uploadToSignedUrl(path, token, file, { contentType: file.type })
       if (error) throw new Error("upload failed")
       const name = title.trim() || file.name
       setAttachment({ path, title: name })

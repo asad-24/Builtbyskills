@@ -3,9 +3,9 @@ import "server-only"
 import { emailTemplates } from "@/emails/templates"
 import { getOptionalServerEnv } from "@/lib/env"
 import { sendTransactionalEmail } from "@/lib/email/send"
-import type { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import type { createDatabaseAdminClient } from "@/lib/database/admin"
 
-type Client = ReturnType<typeof createSupabaseAdminClient>
+type Client = ReturnType<typeof createDatabaseAdminClient>
 type Result = { ok: boolean; message: string }
 type Approval = {
   ok: boolean

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { requireAdmin } from "@/lib/auth/session"
 
 const MAX_SIZE = 5 * 1024 * 1024
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
   const path = `course-thumbnails/${crypto.randomUUID()}.${extension}`
 
   try {
-    const supabase = createSupabaseAdminClient()
+    const supabase = createDatabaseAdminClient()
     const { error } = await supabase.storage
       .from("course-thumbnails")
       .upload(path, buffer, {

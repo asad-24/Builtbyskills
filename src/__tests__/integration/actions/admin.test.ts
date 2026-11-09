@@ -3,6 +3,8 @@ import { createSupabaseMock } from "@/test/mocks/supabase"
 import { AppForbiddenError } from "@/lib/errors"
 
 vi.mock("server-only", () => ({}))
+const { authLookup } = vi.hoisted(() => ({ authLookup: vi.fn() }))
+vi.mock("@/lib/database/auth", () => ({ getAuth: () => ({ $context: Promise.resolve({ internalAdapter: { findUserByEmail: authLookup } }) }) }))
 
 vi.mock("@/lib/auth/session", () => ({
   requireAdmin: vi.fn(),
@@ -12,8 +14,8 @@ vi.mock("@/lib/auth/session", () => ({
   guardDashboard: vi.fn(),
 }))
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: vi.fn(),
+vi.mock("@/lib/database/admin", () => ({
+  createDatabaseAdminClient: vi.fn(),
 }))
 
 vi.mock("@/lib/email/send", () => ({
@@ -30,7 +32,7 @@ vi.mock("next/cache", () => ({
 }))
 
 import { requireAdmin } from "@/lib/auth/session"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { sendTransactionalEmail } from "@/lib/email/send"
 import { revalidatePath } from "next/cache"
 import {
@@ -78,7 +80,7 @@ describe("admin actions", () => {
       tableChains.get("courses")!.chain.setResolveWith(null, null)
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         title: "Shopify Mastery",
@@ -138,7 +140,7 @@ describe("admin actions", () => {
       tableChains.get("courses")!.chain.setResolveWith(null, null)
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         id: "550e8400-e29b-41d4-a716-446655440001",
@@ -171,7 +173,7 @@ describe("admin actions", () => {
       tableChains.get("courses")!.chain.setResolveWith(null, null)
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         id: "course-1",
@@ -191,7 +193,7 @@ describe("admin actions", () => {
       tableChains.get("course_sections")!.chain.setResolveWith(null, null)
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         course_id: "550e8400-e29b-41d4-a716-446655440000",
@@ -214,7 +216,7 @@ describe("admin actions", () => {
       tableChains.get("lessons")!.chain.setResolveWith(null, null)
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         section_id: "550e8400-e29b-41d4-a716-446655440001",
@@ -247,7 +249,7 @@ describe("admin actions", () => {
       mock.auth.admin.generateLink.mockResolvedValue({
         data: { properties: { action_link: actionLink } }, error: null,
       })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as unknown as ReturnType<typeof createSupabaseAdminClient>)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as unknown as ReturnType<typeof createDatabaseAdminClient>)
       const result = await action(undefined, createFormData({
         full_name: "New User", email: "NEW@example.com", status: "active",
       }))
@@ -283,7 +285,7 @@ describe("admin actions", () => {
         },
         error: null,
       })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         full_name: "New Student",
@@ -320,7 +322,7 @@ describe("admin actions", () => {
       const { mock, tableChains } = createSupabaseMock()
       mock.from("profiles")
       tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: { id: "existing-profile" }, error: null })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         full_name: "New Student",
@@ -341,7 +343,7 @@ describe("admin actions", () => {
       const { mock, tableChains } = createSupabaseMock()
       mock.from("profiles")
       tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: { id: "existing-profile" }, error: null })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         full_name: "New Student",
@@ -356,272 +358,37 @@ describe("admin actions", () => {
       expect(mock.auth.admin.createUser).not.toHaveBeenCalled()
     })
 
-    it("reuses existing auth user and creates profile when auth user exists but profile does not", async () => {
-      const { mock, tableChains } = createSupabaseMock()
-      mock.from("profiles")
-      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null })
-      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null })
-      tableChains.get("profiles")!.chain.single.mockResolvedValue({ data: { id: "new-profile-1" }, error: null })
-      mock.from("audit_logs")
-      tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      mock.auth.admin.createUser.mockResolvedValue({
-        error: { code: "email_exists", message: "Auth user already exists" },
-      })
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => [{ id: "existing-auth-user", email: "existing@example.com" }],
-        headers: new Headers(),
-      } as Response)
-      vi.stubGlobal("fetch", fetchMock)
-      mock.auth.admin.generateLink.mockResolvedValue({
-        data: {
-          properties: {
-            action_link: "https://example.supabase.co/auth/v1/verify?token=test&type=recovery",
-          },
-        },
-        error: null,
-      })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
-
-      const formData = createFormData({
-        full_name: "Existing Auth User",
-        email: "existing@example.com",
-        phone: "03001234567",
-        status: "active",
-      })
-
-      const result = await createStudentAction(undefined, formData)
-
-      expect(result).toEqual({
-        ok: true,
-        message: "Student created and activation email queued.",
-      })
-      expect(mock.auth.admin.createUser).toHaveBeenCalled()
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/auth/v1/admin/users?page=1&per_page=50"),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: expect.stringContaining("Bearer "),
-          }),
-        })
-      )
-      expect(mock.auth.admin.generateLink).toHaveBeenCalled()
-      expect(mock.from("profiles").upsert).toHaveBeenCalled()
-      expect(sendTransactionalEmail).toHaveBeenCalled()
-    })
-
-    it("reuses existing auth user found via direct fetch lookup with exact Supabase duplicate error", async () => {
-      const { mock, tableChains } = createSupabaseMock()
-      mock.from("profiles")
-      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null })
-      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null })
-      tableChains.get("profiles")!.chain.single.mockResolvedValue({ data: { id: "new-profile-1" }, error: null })
-      mock.from("audit_logs")
-      tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      mock.auth.admin.createUser.mockResolvedValue({
-        error: { code: "email_exists", message: "A user with this email address has already been registered" },
-      })
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => [{ id: "existing-auth-user", email: "existing@example.com" }],
-        headers: new Headers(),
-      } as Response)
-      vi.stubGlobal("fetch", fetchMock)
-      mock.auth.admin.generateLink.mockResolvedValue({
-        data: {
-          properties: {
-            action_link: "https://example.supabase.co/auth/v1/verify?token=test&type=recovery",
-          },
-        },
-        error: null,
-      })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
-
-      const formData = createFormData({
-        full_name: "Existing Auth User",
-        email: "existing@example.com",
-        phone: "03001234567",
-        status: "active",
-      })
-
-      const result = await createStudentAction(undefined, formData)
-
-      expect(result).toEqual({
-        ok: true,
-        message: "Student created and activation email queued.",
-      })
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/auth/v1/admin/users?page=1&per_page=50"),
-        expect.anything()
-      )
-    })
-
-    it("reuses existing auth user beyond first page when listing users via fetch", async () => {
-      const { mock, tableChains } = createSupabaseMock()
-      mock.from("profiles")
-      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null })
-      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null })
-      tableChains.get("profiles")!.chain.single.mockResolvedValue({ data: { id: "new-profile-1" }, error: null })
-      mock.from("audit_logs")
-      tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      mock.auth.admin.createUser.mockResolvedValue({
-        error: { code: "email_exists", message: "A user with this email address has already been registered" },
-      })
-      const fetchMock = vi.fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => Array.from({ length: 50 }, (_, i) => ({ id: `user-${i}`, email: `user${i}@example.com` })),
-          headers: new Headers({
-            "x-total-count": "100",
-          }),
-        } as Response)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => [{ id: "existing-auth-user", email: "existing@example.com" }],
-          headers: new Headers(),
-        } as Response)
-      vi.stubGlobal("fetch", fetchMock)
-      mock.auth.admin.generateLink.mockResolvedValue({
-        data: {
-          properties: {
-            action_link: "https://example.supabase.co/auth/v1/verify?token=test&type=recovery",
-          },
-        },
-        error: null,
-      })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
-
-      const formData = createFormData({
-        full_name: "Existing Auth User",
-        email: "existing@example.com",
-        phone: "03001234567",
-        status: "active",
-      })
-
-      const result = await createStudentAction(undefined, formData)
-
-      expect(result).toEqual({
-        ok: true,
-        message: "Student created and activation email queued.",
-      })
-      expect(fetchMock).toHaveBeenCalledTimes(2)
-      expect(fetchMock).toHaveBeenNthCalledWith(1, expect.stringContaining("/auth/v1/admin/users?page=1&per_page=50"), expect.anything())
-      expect(fetchMock).toHaveBeenNthCalledWith(2, expect.stringContaining("/auth/v1/admin/users?page=2&per_page=50"), expect.anything())
-    })
-
-    it("returns failure when auth user does not exist after scanning all pages via fetch", async () => {
+    it("reuses a matching MongoDB auth identity without creating another account", async () => {
       const { mock, tableChains } = createSupabaseMock()
       mock.from("profiles")
       tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: null, error: null })
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => [],
-        headers: new Headers(),
-      } as Response)
-      vi.stubGlobal("fetch", fetchMock)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
-
-      mock.auth.admin.createUser.mockResolvedValue({
-        error: { code: "email_exists", message: "A user with this email address has already been registered" },
-      })
-
-      const formData = createFormData({
-        full_name: "New Student",
-        email: "newstudent@example.com",
-        phone: "03001234567",
-        status: "active",
-      })
-
-      const result = await createStudentAction(undefined, formData)
-
-      expect(result).toEqual({
-        ok: false,
-        message: "User already exists but could not be found in Auth.",
-      })
+      tableChains.get("profiles")!.chain.single.mockResolvedValue({ data: { id: "new-profile-1" }, error: null })
+      mock.auth.admin.createUser.mockResolvedValue({ error: { code: "email_exists", message: "Account already exists" } })
+      authLookup.mockResolvedValue({ user: { id: "existing-auth-user" } })
+      mock.auth.admin.generateLink.mockResolvedValue({ data: { properties: { action_link: "https://academy.test/reset-password?token=synthetic" } }, error: null })
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
+      const result = await createStudentAction(undefined, createFormData({ full_name: "Existing Student", email: "existing@example.com", phone: "03001234567", status: "active" }))
+      expect(result.ok).toBe(true)
+      expect(authLookup).toHaveBeenCalledWith("existing@example.com")
+      expect(mock.from("profiles").upsert).toHaveBeenCalledWith(expect.objectContaining({ auth_user_id: "existing-auth-user", role: "student" }), { onConflict: "email" })
     })
-
-    it("handles fetch auth lookup error explicitly", async () => {
+    it("does not attach a student profile when the auth identity cannot be verified", async () => {
       const { mock, tableChains } = createSupabaseMock()
       mock.from("profiles")
       tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: null, error: null })
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: false,
-        status: 500,
-        text: async () => "Internal Server Error",
-      } as unknown as Response)
-      vi.stubGlobal("fetch", fetchMock)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
-
-      mock.auth.admin.createUser.mockResolvedValue({
-        error: { code: "email_exists", message: "A user with this email address has already been registered" },
-      })
-
-      const formData = createFormData({
-        full_name: "New Student",
-        email: "newstudent@example.com",
-        phone: "03001234567",
-        status: "active",
-      })
-
-      const result = await createStudentAction(undefined, formData)
-
-      expect(result).toEqual({
-        ok: false,
-        message: "Unable to verify existing auth user. Please try again.",
-      })
-    })
-
-    it("handles object response shape with users property from fetch lookup", async () => {
-      const { mock, tableChains } = createSupabaseMock()
-      mock.from("profiles")
-      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null })
-      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null })
-      tableChains.get("profiles")!.chain.single.mockResolvedValue({ data: { id: "new-profile-1" }, error: null })
-      mock.from("audit_logs")
-      tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      mock.auth.admin.createUser.mockResolvedValue({
-        error: { code: "email_exists", message: "A user with this email address has already been registered" },
-      })
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ users: [{ id: "existing-auth-user", email: "existing@example.com" }], aud: "authenticated" }),
-        headers: new Headers(),
-      } as Response)
-      vi.stubGlobal("fetch", fetchMock)
-      mock.auth.admin.generateLink.mockResolvedValue({
-        data: {
-          properties: {
-            action_link: "https://example.supabase.co/auth/v1/verify?token=test&type=recovery",
-          },
-        },
-        error: null,
-      })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
-
-      const formData = createFormData({
-        full_name: "Existing Auth User",
-        email: "existing@example.com",
-        phone: "03001234567",
-        status: "active",
-      })
-
-      const result = await createStudentAction(undefined, formData)
-
-      expect(result).toEqual({
-        ok: true,
-        message: "Student created and activation email queued.",
-      })
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/auth/v1/admin/users?page=1&per_page=50"),
-        expect.anything()
-      )
+      mock.auth.admin.createUser.mockResolvedValue({ error: { code: "email_exists", message: "Account already exists" } })
+      authLookup.mockRejectedValue(new Error("Database unavailable"))
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
+      const result = await createStudentAction(undefined, createFormData({ full_name: "Existing Student", email: "existing@example.com", phone: "03001234567", status: "active" }))
+      expect(result.ok).toBe(false)
+      expect(mock.from("profiles").upsert).not.toHaveBeenCalled()
     })
 
     it("detects duplicate email with uppercase and spaces", async () => {
       const { mock, tableChains } = createSupabaseMock()
       mock.from("profiles")
       tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: { id: "existing-profile" }, error: null })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         full_name: "New Student",
@@ -634,36 +401,6 @@ describe("admin actions", () => {
 
       expect(result).toEqual({ ok: false, message: "Student already registered" })
       expect(mock.auth.admin.createUser).not.toHaveBeenCalled()
-    })
-
-    it("returns 'Student already registered' when both auth user and profile exist after createUser duplicate", async () => {
-      const { mock, tableChains } = createSupabaseMock()
-      mock.from("profiles")
-      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null })
-      tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValueOnce({ data: { id: "existing-profile" }, error: null })
-      mock.from("audit_logs")
-      tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      mock.auth.admin.createUser.mockResolvedValue({
-        error: { code: "email_exists", message: "A user with this email address has already been registered" },
-      })
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => [{ id: "existing-auth-user", email: "existing@example.com" }],
-        headers: new Headers(),
-      } as Response)
-      vi.stubGlobal("fetch", fetchMock)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
-
-      const formData = createFormData({
-        full_name: "Existing Student",
-        email: "existing@example.com",
-        phone: "03001234567",
-        status: "active",
-      })
-
-      const result = await createStudentAction(undefined, formData)
-
-      expect(result).toEqual({ ok: false, message: "Student already registered" })
     })
 
     it("reports saved account when email sending fails", async () => {
@@ -685,7 +422,7 @@ describe("admin actions", () => {
         },
         error: null,
       })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const sendTransactionalEmailError = new Error("Brevo API error")
       vi.mocked(sendTransactionalEmail).mockResolvedValueOnce({
@@ -729,7 +466,7 @@ describe("admin actions", () => {
         },
         error: null,
       })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       vi.mocked(sendTransactionalEmail).mockResolvedValueOnce({
         ok: false,
@@ -761,7 +498,7 @@ describe("admin actions", () => {
       tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: { id: "550e8400-e29b-41d4-a716-446655440010" }, error: null })
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         id: "550e8400-e29b-41d4-a716-446655440010",
@@ -796,7 +533,7 @@ describe("admin actions", () => {
       const { mock, tableChains } = createSupabaseMock()
       mock.from("profiles")
       tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: null, error: null })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const result = await updateStudentAction(undefined, createFormData({
         id: "550e8400-e29b-41d4-a716-446655440010",
@@ -816,7 +553,7 @@ describe("admin actions", () => {
       tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: { id: "550e8400-e29b-41d4-a716-446655440010" }, error: null })
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const result = await updateStudentStatusAction(undefined, createFormData({
         id: "550e8400-e29b-41d4-a716-446655440010",
@@ -841,7 +578,7 @@ describe("admin actions", () => {
       const { mock, tableChains } = createSupabaseMock()
       mock.from("profiles")
       tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: null, error: null })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const result = await updateStudentStatusAction(undefined, createFormData({
         id: "550e8400-e29b-41d4-a716-446655440010",
@@ -860,7 +597,7 @@ describe("admin actions", () => {
       tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: { id: "550e8400-e29b-41d4-a716-446655440010" }, error: null })
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const result = await deleteStudentAction(undefined, createFormData({
         id: "550e8400-e29b-41d4-a716-446655440010",
@@ -885,7 +622,7 @@ describe("admin actions", () => {
       const { mock, tableChains } = createSupabaseMock()
       mock.from("profiles")
       tableChains.get("profiles")!.chain.maybeSingle.mockResolvedValue({ data: null, error: null })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const result = await deleteStudentAction(undefined, createFormData({
         id: "550e8400-e29b-41d4-a716-446655440010",
@@ -905,7 +642,7 @@ describe("admin actions", () => {
       tableChains.get("enrollments")!.chain.setResolveWith(null, null)
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         student_id: "550e8400-e29b-41d4-a716-446655440010",
@@ -929,7 +666,7 @@ describe("admin actions", () => {
       tableChains.get("payment_methods")!.chain.setResolveWith(null, null)
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         method_type: "bank_transfer",
@@ -960,7 +697,7 @@ describe("admin actions", () => {
         ok: true, activation: false, email: "ali@example.com", full_name: "Ali",
         course_title: "Shopify", receipt_id: "audit-1", receipt_metadata: { status: "approved" },
       }, error: null })
-      vi.mocked(createSupabaseAdminClient).mockReturnValue({ ...mock, rpc } as unknown as ReturnType<typeof createSupabaseAdminClient>)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue({ ...mock, rpc } as unknown as ReturnType<typeof createDatabaseAdminClient>)
       const result = await reviewPaymentAction(undefined, createFormData({
         payment_id: "550e8400-e29b-41d4-a716-446655440000", status: "approved",
       }))
@@ -984,7 +721,7 @@ describe("admin actions", () => {
       tableChains.get("enrollment_requests")!.chain.setResolveWith(null, null)
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         payment_id: "550e8400-e29b-41d4-a716-446655440000",
@@ -1008,7 +745,7 @@ describe("admin actions", () => {
       tableChains.get("live_classes")!.chain.setResolveWith(null, null)
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         course_id: "550e8400-e29b-41d4-a716-446655440000",
@@ -1034,7 +771,7 @@ describe("admin actions", () => {
       tableChains.get("announcements")!.chain.setResolveWith(null, null)
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         title: "New Course Released",
@@ -1056,7 +793,7 @@ describe("admin actions", () => {
       tableChains.get("contact_submissions")!.chain.setResolveWith(null, null)
       mock.from("audit_logs")
       tableChains.get("audit_logs")!.chain.setResolveWith({ id: "audit-1" }, null)
-      vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as any)
+      vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as any)
 
       const formData = createFormData({
         id: "contact-1",
@@ -1081,7 +818,7 @@ describe("payment method management", () => {
 
   function setup() {
     const { mock } = createSupabaseMock()
-    vi.mocked(createSupabaseAdminClient).mockReturnValue(mock as never)
+    vi.mocked(createDatabaseAdminClient).mockReturnValue(mock as never)
     return { mock, methods: mock.from("payment_methods") }
   }
 
@@ -1090,7 +827,7 @@ describe("payment method management", () => {
     expect(result.ok).toBe(false)
     expect(result.message).toContain("Do not include the word IBAN")
     expect(result.message).not.toMatch(/\{|\[|invalid_format|Zod|path|code/)
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+    expect(createDatabaseAdminClient).not.toHaveBeenCalled()
   })
 
   it("edits the existing row, clears optional details, and preserves availability and history", async () => {
@@ -1131,7 +868,7 @@ describe("payment method management", () => {
     const result = await action(undefined, createFormData({ ...fields, is_active: "true" }))
     expect(result.ok).toBe(false)
     expect(result.message).toContain("permission")
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled()
+    expect(createDatabaseAdminClient).not.toHaveBeenCalled()
   })
 
   it.each([createPaymentMethodAction, updatePaymentMethodAction])("rejects an existing account instead of creating duplicates", async action => {

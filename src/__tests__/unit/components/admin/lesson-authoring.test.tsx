@@ -5,7 +5,7 @@ vi.mock("@/actions/admin", () => ({ createLessonAction: vi.fn(), updateLessonAct
 const { refresh, uploadFile } = vi.hoisted(() => ({ refresh: vi.fn(), uploadFile: vi.fn() }))
 const router = { refresh }
 vi.mock("next/navigation", () => ({ useRouter: () => router }))
-vi.mock("@/lib/supabase/browser", () => ({ createSupabaseBrowserClient: () => ({ storage: { from: () => ({ uploadToSignedUrl: uploadFile }) } }) }))
+vi.mock("@/lib/database/browser", () => ({ createDatabaseBrowserClient: () => ({ storage: { from: () => ({ uploadToSignedUrl: uploadFile }) } }) }))
 import { createLessonAction, updateLessonAction } from "@/actions/admin"
 import { LessonEditor } from "@/components/admin/lesson-editor"
 import { LessonResources } from "@/components/admin/lesson-resources"

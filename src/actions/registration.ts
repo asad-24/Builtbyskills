@@ -1,7 +1,7 @@
 "use server"
 import { redirect } from "next/navigation"
 import { z } from "zod"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createDatabaseServerClient } from "@/lib/database/server"
 import { getPublicEnv } from "@/lib/env"
 
 type State = { ok: boolean; message: string }
@@ -19,7 +19,7 @@ export async function registerStudentAction(_: State | undefined, data: FormData
   let signedIn = false
   try {
     const { full_name, email, phone, password } = result.data
-    const supabase = await createSupabaseServerClient()
+    const supabase = await createDatabaseServerClient()
     const { data: auth, error } = await supabase.auth.signUp({
       email, password,
       options: { data: { full_name, phone, role: "student" }, emailRedirectTo: `${getPublicEnv().siteUrl}/auth/confirm` },

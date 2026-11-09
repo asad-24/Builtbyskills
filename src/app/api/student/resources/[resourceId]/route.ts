@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { requireRole } from "@/lib/auth/session"
 import { requireStudentLesson } from "@/lib/lessons/access"
-import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { createDatabaseAdminClient } from "@/lib/database/admin"
 import { lessonHttpError, privateHeaders } from "@/lib/lessons/http"
 import { safeExternalUrl } from "@/lib/validations/course-builder"
 
@@ -11,7 +11,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ res
     await requireRole(["student"])
     const { resourceId } = await params
     if (!z.string().uuid().safeParse(resourceId).success) return NextResponse.json({ error: "Resource unavailable." }, { status: 404 })
-    const db = createSupabaseAdminClient()
+    const db = createDatabaseAdminClient()
     const { data: resource, error } = await db.from("lesson_resources").select("*").eq("id", resourceId).single()
     if (error || !resource) return NextResponse.json({ error: "Resource unavailable." }, { status: 404 })
     await requireStudentLesson(resource.lesson_id)

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
-import { getPublicEnv } from "@/lib/env"
+import { getAuth } from "@/lib/database/auth"
+import { mongoDb } from "@/lib/database/connection"
 
 const PUBLIC_ROUTES = new Set([
   "/",
@@ -47,7 +47,7 @@ function redirectToLogin(request: NextRequest, response: NextResponse) {
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
-  let response = NextResponse.next({ request })
+  const response = NextResponse.next({ request })
 
   if (pathname.startsWith("/api/")) {
     return response
@@ -57,37 +57,15 @@ export async function proxy(request: NextRequest) {
     return response
   }
 
-  const env = getPublicEnv()
-
-  const supabase = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll()
-      },
-      setAll(cookiesToSet, headers = {}) {
-        // Forward refreshed tokens to this render as well as to the browser.
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-        response = copySessionResponse(response, NextResponse.next({ request }))
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options)
-        })
-        // SSR sends these only on the first cookie write; retain them on later writes.
-        Object.entries(headers).forEach(([name, value]) => response.headers.set(name, value))
-      },
-    },
-  })
-
-  const { data: { user } } = await supabase.auth.getUser()
+  const session = await getAuth().api.getSession({ headers: request.headers, query: { disableCookieCache: true, disableRefresh: true } })
+  const user = session?.user
 
   if (!user) {
     return redirectToLogin(request, response)
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("auth_user_id", user.id)
-    .single()
+  const profile = user.emailVerified ? await mongoDb().collection("profiles").findOne({ auth_user_id: user.id, status: "active" }) : null
+  if (!profile) return redirectToLogin(request, response)
 
   if (pathname.startsWith("/admin") && profile?.role !== "super_admin") {
     return redirectToLogin(request, response)
