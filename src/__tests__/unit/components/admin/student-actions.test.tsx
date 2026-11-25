@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import userEvent from "@testing-library/user-event"
+import { act, within, waitFor } from "@testing-library/react"
 
 import { render, screen } from "@/test/utils/render"
 
@@ -12,6 +13,7 @@ vi.mock("@/actions/admin", () => ({
 }))
 
 import { AssignCourseDialog, CreateStudentDialog, StudentRowActions, StudentStatusButton } from "@/components/admin/student-actions"
+import { createStudentAction } from "@/actions/admin"
 import type { Profile } from "@/types/lms"
 
 const student = {
@@ -33,6 +35,51 @@ describe("CreateStudentDialog", () => {
     expect(screen.getByRole("dialog", { name: "Create student" })).toBeInTheDocument()
     expect(screen.getByRole("textbox", { name: "Full name" })).toBeInTheDocument()
     expect(screen.getByRole("textbox", { name: "Email" })).toHaveAttribute("type", "email")
+  })
+
+  async function openAndFill() {
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("button", { name: "Create student" }))
+    const dialog = screen.getByRole("dialog", { name: "Create student" })
+    await user.type(within(dialog).getByLabelText("Full name"), "Test Student")
+    await user.type(within(dialog).getByLabelText("Email"), "student@example.test")
+    return { user, dialog }
+  }
+
+  it("closes after success, preserves the confirmation, and can open a fresh form", async () => {
+    render(<CreateStudentDialog />)
+    const { user, dialog } = await openAndFill()
+    await user.click(within(dialog).getByRole("button", { name: "Create student" }))
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+    expect(screen.getByRole("status")).toHaveTextContent("Student created.")
+    expect(screen.getByRole("button", { name: "Create student" })).toHaveFocus()
+    await user.click(screen.getByRole("button", { name: "Create student" }))
+    expect(screen.getByLabelText("Full name")).toHaveValue("")
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
+  })
+
+  it("keeps the modal open when student creation fails", async () => {
+    vi.mocked(createStudentAction).mockResolvedValueOnce({ ok: false, message: "Student already registered" })
+    render(<CreateStudentDialog />)
+    const { user, dialog } = await openAndFill()
+    await user.click(within(dialog).getByRole("button", { name: "Create student" }))
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Student already registered")
+    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(within(dialog).getByRole("button", { name: "Create student" })).toBeEnabled()
+  })
+
+  it("waits for creation and retains an email-delivery warning outside the closed modal", async () => {
+    let finish!: (value: { ok: boolean; message: string }) => void
+    const pending = new Promise<{ ok: boolean; message: string }>(resolve => { finish = resolve })
+    vi.mocked(createStudentAction).mockImplementationOnce(() => pending)
+    render(<CreateStudentDialog />)
+    const { user, dialog } = await openAndFill()
+    await user.click(within(dialog).getByRole("button", { name: "Create student" }))
+    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(within(dialog).getByRole("button", { name: "Saving..." })).toBeDisabled()
+    await act(async () => { finish({ ok: true, message: "Student created, but the activation email could not be delivered." }); await pending })
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+    expect(screen.getByRole("status")).toHaveTextContent("activation email could not be delivered")
   })
 })
 

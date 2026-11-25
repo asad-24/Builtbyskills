@@ -2,7 +2,7 @@ import Link from "next/link"
 
 import { signInAction } from "@/actions/auth"
 import { PublicPageShell } from "@/components/public/site-shell"
-import { Button } from "@/components/ui/button"
+import { LoginSubmitButton } from "@/components/auth/login-submit-button"
 
 export const metadata = {
   title: "Login | Builtbyskills",
@@ -32,7 +32,7 @@ export default async function LoginPage({
               <input name="password" type="password" required className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-lime-500 focus:ring-3 focus:ring-lime-200" />
             </label>
             {error ? <p className="text-sm font-medium text-rose-700">{error}</p> : null}
-            <Button type="submit">Sign in</Button>
+            <LoginSubmitButton />
           </form>
           <p className="mt-5 text-sm text-slate-600">New student? <Link href="/register" className="font-semibold underline">Create an account</Link></p>
           <Link href="/forgot-password" className="mt-4 inline-block text-sm font-medium text-lime-700 hover:underline">

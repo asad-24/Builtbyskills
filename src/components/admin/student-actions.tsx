@@ -36,16 +36,23 @@ const enrollmentStatusOptions = ["active", "pending", "suspended", "completed", 
 
 export function CreateStudentDialog() {
   const [open, setOpen] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
 
   return (
     <>
-      <Button type="button" onClick={() => setOpen(true)}>
+      <Button ref={trigger} type="button" onClick={() => { setMessage(null); setOpen(true) }}>
         <Plus className="size-4" />
         Create student
       </Button>
+      {message ? <p role="status" className="text-sm font-medium text-emerald-700">{message}</p> : null}
       {open ? (
         <StudentModal title="Create student" onClose={() => setOpen(false)}>
-          <ActionForm action={createStudentAction} submitLabel="Create student">
+          <ActionForm action={createStudentAction} submitLabel="Create student" onSuccess={result => {
+            setMessage(result.message)
+            setOpen(false)
+            trigger.current?.focus()
+          }}>
             <TextField name="full_name" label="Full name" required />
             <TextField name="email" label="Email" type="email" required />
             <TextField name="phone" label="Phone" />

@@ -17,19 +17,25 @@ export function ActionForm({
   children,
   submitLabel,
   className,
+  onSuccess,
 }: {
   action: (state: ActionState | undefined, formData: FormData) => Promise<ActionState>
   children: React.ReactNode
   submitLabel: string
   className?: string
+  onSuccess?: (state: ActionState) => void
 }) {
-  const [state, formAction] = useActionState(action, undefined)
+  const [state, formAction] = useActionState(async (previous: ActionState | undefined, data: FormData) => {
+    const result = await action(previous, data)
+    if (result.ok) onSuccess?.(result)
+    return result
+  }, undefined)
 
   return (
     <form action={formAction} className={className ?? "grid gap-4"}>
       {children}
       {state?.message ? (
-        <p className={state.ok ? "text-sm font-medium text-emerald-700" : "text-sm font-medium text-rose-700"}>
+        <p role={state.ok ? "status" : "alert"} className={state.ok ? "text-sm font-medium text-emerald-700" : "text-sm font-medium text-rose-700"}>
           {state.message}
         </p>
       ) : null}
