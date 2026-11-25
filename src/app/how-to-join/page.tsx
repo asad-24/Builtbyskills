@@ -1,8 +1,8 @@
-import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 
 import { PublicPageShell } from "@/components/public/site-shell"
 import { Button } from "@/components/ui/button"
+import { NavigationLink } from "@/components/public/navigation-link"
 
 export const metadata = {
   title: "How to Join | Builtbyskills",
@@ -40,7 +40,7 @@ export default function HowToJoinPage() {
           <h2 className="text-3xl font-semibold">Ready to Start?</h2>
           <p className="mt-3 max-w-2xl text-white/70">Your new skill and career path are just a few steps away. Select your platform now and join the Builtbyskills community.</p>
           <Button asChild className="mt-6">
-            <Link href="/enroll">Join Now</Link>
+            <NavigationLink href="/enroll">Join Now</NavigationLink>
           </Button>
         </section>
       </main>

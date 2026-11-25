@@ -11,6 +11,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
+import { NavigationLink } from "@/components/public/navigation-link"
 
 type MagneticButtonProps = PropsWithChildren<
   AnchorHTMLAttributes<HTMLAnchorElement> & {
@@ -40,7 +41,7 @@ export function MagneticButton({
   onMouseLeave,
   ...props
 }: MagneticButtonProps) {
-  const LinkComponent = href.startsWith("#") ? "a" : Link
+  const LinkComponent = href.startsWith("#") ? "a" : href.split("?")[0] === "/enroll" ? NavigationLink : Link
   const linkRef = useRef<HTMLAnchorElement>(null)
   const reducedMotion = useReducedMotion()
 

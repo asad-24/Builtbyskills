@@ -3,6 +3,7 @@ import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { WhatsAppButton } from "@/components/public/whatsapp-button"
+import { NavigationLink } from "@/components/public/navigation-link"
 import { cn } from "@/lib/utils"
 
 const links = [
@@ -29,7 +30,7 @@ export function PublicHeader() {
           ))}
         </nav>
         <Button asChild size="sm">
-          <Link href="/enroll">Join Now</Link>
+          <NavigationLink href="/enroll">Join Now</NavigationLink>
         </Button>
       </div>
     </header>
