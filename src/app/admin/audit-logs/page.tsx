@@ -1,5 +1,5 @@
 import { AdminTable, PageHeader, SetupNotice } from "@/components/admin/admin-ui"
-import { getAdminWorkspaceData } from "@/features/admin/data"
+import { getAdminAuditData } from "@/features/admin/read-models"
 import { formatDate } from "@/lib/format"
 
 export const metadata = {
@@ -7,7 +7,7 @@ export const metadata = {
 }
 
 export default async function AdminAuditLogsPage() {
-  const result = await getAdminWorkspaceData()
+  const result = await getAdminAuditData()
   if (!result.ok) return <SetupNotice message={result.message} />
 
   return (

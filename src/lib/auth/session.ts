@@ -1,9 +1,13 @@
 import "server-only"
 
 import { redirect } from "next/navigation"
+import { cache } from "react"
+import { cookies } from "next/headers"
 
 import { AppAuthError, AppForbiddenError, MissingEnvironmentError } from "@/lib/errors"
 import { createDatabaseServerClient } from "@/lib/database/server"
+import { mongoDb } from "@/lib/database/connection"
+import { reportDatabaseError } from "@/lib/database/diagnostics"
 import type { Profile, UserRole } from "@/types/lms"
 
 export async function getCurrentProfile(): Promise<Profile | null> {
@@ -13,16 +17,30 @@ export async function getCurrentProfile(): Promise<Profile | null> {
     error: userError,
   } = await supabase.auth.getUser()
 
-  if (userError || !user) return null
+  if (userError || !user || !user.emailVerified) return null
+  // The user ID comes from Better Auth's verified database session. Avoid a
+  // second policy/profile lookup through the general-purpose query adapter.
+  try {
+    const profile = await mongoDb().collection("profiles").findOne({ auth_user_id: user.id }, { projection: { _id: 0 } })
+    return profile as Profile | null
+  } catch (error) {
+    reportDatabaseError(error, { operation: "select", collection: "profiles" })
+    return null
+  }
+}
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("auth_user_id", user.id)
-    .single()
+const readProfile = cache(async (cookieKey: string) => {
+  void cookieKey
+  return getCurrentProfile()
+})
 
-  if (error || !data) return null
-  return data as Profile
+// React caches only the current render. Cookie changes force a fresh lookup;
+// mutation/API guards below deliberately use the uncached profile reader.
+export async function requireAdminRead() {
+  const profile = await readProfile((await cookies()).toString())
+  if (!profile) throw new AppAuthError()
+  if (profile.status !== "active" || profile.role !== "super_admin") throw new AppForbiddenError()
+  return profile
 }
 
 export async function requireProfile() {
@@ -48,7 +66,7 @@ export async function requireAdmin() {
 
 export async function guardDashboard(role: UserRole, fallback = "/login") {
   try {
-    const profile = await requireRole([role])
+    const profile = role === "super_admin" ? await requireAdminRead() : await requireRole([role])
     return profile
   } catch (error) {
     if (error instanceof MissingEnvironmentError) return null

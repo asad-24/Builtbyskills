@@ -1,12 +1,12 @@
 import { PageHeader, SetupNotice, StatCard } from "@/components/admin/admin-ui"
-import { getAdminWorkspaceData } from "@/features/admin/data"
+import { getAdminReportsData } from "@/features/admin/read-models"
 
 export const metadata = {
   title: "Reports | Builtbyskills Admin",
 }
 
 export default async function AdminReportsPage() {
-  const result = await getAdminWorkspaceData()
+  const result = await getAdminReportsData()
   if (!result.ok) return <SetupNotice message={result.message} />
 
   const { stats } = result.data

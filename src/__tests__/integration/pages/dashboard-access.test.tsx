@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createSupabaseMock } from "@/test/mocks/supabase"
 
 vi.mock("server-only", () => ({}))
+const { findOne } = vi.hoisted(() => ({ findOne: vi.fn() }))
+vi.mock("@/lib/database/connection", () => ({ mongoDb: () => ({ collection: () => ({ findOne }) }) }))
+vi.mock("next/headers", () => ({ cookies: async () => ({ toString: () => "synthetic" }) }))
 vi.mock("@/lib/database/server", () => ({ createDatabaseServerClient: vi.fn() }))
 vi.mock("next/navigation", () => ({ redirect: vi.fn((path: string) => { throw new Error(`REDIRECT:${path}`) }) }))
 
@@ -21,16 +24,16 @@ describe("unchanged dashboard layout and real active-profile guards", () => {
   for (const { role, layout } of layouts) {
     it.each(["inactive", "suspended"])(`${role} layout rejects %s profile`, async (status) => {
       const { mock } = createSupabaseMock()
-      mock.auth.getUser.mockResolvedValue({ data: { user: { id: "user-1" } } })
-      mock.from("profiles").single.mockResolvedValue({ data: { id: "profile-1", role, status }, error: null })
+      mock.auth.getUser.mockResolvedValue({ data: { user: { id: "user-1", emailVerified: true } } })
+      findOne.mockResolvedValue({ id: "profile-1", role, status })
       vi.mocked(createDatabaseServerClient).mockResolvedValue(mock as any)
       await expect(layout({ children: null })).rejects.toThrow("REDIRECT:/login")
     })
 
     it(`${role} layout accepts an active matching profile`, async () => {
       const { mock } = createSupabaseMock()
-      mock.auth.getUser.mockResolvedValue({ data: { user: { id: "user-1" } } })
-      mock.from("profiles").single.mockResolvedValue({ data: { id: "profile-1", role, status: "active" }, error: null })
+      mock.auth.getUser.mockResolvedValue({ data: { user: { id: "user-1", emailVerified: true } } })
+      findOne.mockResolvedValue({ id: "profile-1", role, status: "active" })
       vi.mocked(createDatabaseServerClient).mockResolvedValue(mock as any)
       await expect(layout({ children: null })).resolves.toBeTruthy()
     })

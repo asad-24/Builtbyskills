@@ -18,7 +18,9 @@
     "db:initialize": "node --conditions=react-server --import tsx scripts/initialize-mongodb.mts",
     "test:mongodb": "node --conditions=react-server --import tsx scripts/test-mongodb.mts",
     "test:legacy:postgres": "node scripts/test-course-portals.mjs",
-    "migrate:legacy:lms-test": "node scripts/migrate-lms-test.mjs"
+    "migrate:legacy:lms-test": "node scripts/migrate-lms-test.mjs",
+    "db:prepare": "node --conditions=react-server --import tsx scripts/prepare-mongodb.mts",
+    "test:admin:performance": "node --conditions=react-server --import tsx scripts/test-admin-performance.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1146.0",

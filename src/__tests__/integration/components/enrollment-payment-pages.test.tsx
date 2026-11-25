@@ -11,12 +11,14 @@ vi.mock("@/components/public/site-shell", () => ({
   PublicPageShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 vi.mock("@/features/admin/data", () => ({
-  getAdminWorkspaceData: vi.fn(), getEnrollmentPageData: vi.fn(),
+  getEnrollmentPageData: vi.fn(),
 }))
 
 import AdminPaymentsPage from "@/app/admin/payments/page"
 import EnrollPage from "@/app/enroll/page"
-import { getAdminWorkspaceData, getEnrollmentPageData } from "@/features/admin/data"
+vi.mock("@/features/admin/read-models", () => ({ getAdminPaymentsData: vi.fn() }))
+import { getAdminPaymentsData } from "@/features/admin/read-models"
+import { getEnrollmentPageData } from "@/features/admin/data"
 
 describe("Enrollment payment pages", () => {
   it("removes the student reference field while preserving course and payment controls", async () => {
@@ -36,7 +38,7 @@ describe("Enrollment payment pages", () => {
 
   it("keeps historical references and shows secure screenshot links only for provided paths", async () => {
     const payment = { amount: 5000, currency: "PKR", status: "pending", submitted_at: "2026-10-01T12:00:00Z" }
-    vi.mocked(getAdminWorkspaceData).mockResolvedValue({ ok: true, data: { payments: [
+    vi.mocked(getAdminPaymentsData).mockResolvedValue({ ok: true, data: { payments: [
       { ...payment, id: "payment-with-receipt", transaction_reference: "HISTORICAL-TXN", screenshot_path: "legacy/receipt.jpg" },
       { ...payment, id: "payment-without-receipt", transaction_reference: null, screenshot_path: null },
     ] } } as never)

@@ -2,7 +2,7 @@ import { DeleteRecord } from "@/components/admin/record-actions"
 import { deleteContactSubmissionAction } from "@/actions/admin-records"
 import { AdminTable, PageHeader, SetupNotice, StatusBadge } from "@/components/admin/admin-ui"
 import { updateContactStatusAction } from "@/actions/admin"
-import { getAdminWorkspaceData } from "@/features/admin/data"
+import { getAdminContactsData } from "@/features/admin/read-models"
 import { formatDate } from "@/lib/format"
 
 export const metadata = {
@@ -10,7 +10,7 @@ export const metadata = {
 }
 
 export default async function AdminContactSubmissionsPage() {
-  const result = await getAdminWorkspaceData()
+  const result = await getAdminContactsData()
   if (!result.ok) return <SetupNotice message={result.message} />
 
   const contacts = result.data.contacts

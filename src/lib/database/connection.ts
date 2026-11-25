@@ -13,7 +13,22 @@ export function mongoClient() {
       maxPoolSize: 10, minPoolSize: 0, maxIdleTimeMS: 60_000,
       serverSelectionTimeoutMS: 10_000, connectTimeoutMS: 10_000,
       socketTimeoutMS: 20_000,
+      monitorCommands: process.env.LMS_PERF === "1",
     }) }
+    if (process.env.LMS_PERF === "1") {
+      const collections = new Map<number, string>()
+      const allowed = /^(profiles|courses|course_sections|lessons|lesson_resources|enrollments|instructor_courses|lesson_progress|payment_submissions|payment_methods|live_classes|announcements|contact_submissions|audit_logs|lms_metadata|user|session)$/
+      cache.lmsMongo.client.on("commandStarted", event => {
+        const collection = event.command[event.commandName]
+        if (typeof collection === "string" && allowed.test(collection)) collections.set(event.requestId, collection)
+      })
+      cache.lmsMongo.client.on("commandSucceeded", event => {
+        const collection = collections.get(event.requestId)
+        collections.delete(event.requestId)
+        if (collection) console.info("[lms-db-perf]", JSON.stringify({ command: event.commandName, collection, durationMs: event.duration }))
+      })
+      cache.lmsMongo.client.on("commandFailed", event => collections.delete(event.requestId))
+    }
   }
   return cache.lmsMongo.client
 }

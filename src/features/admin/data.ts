@@ -3,15 +3,15 @@ import "server-only"
 import { AppAuthError, AppForbiddenError, MissingEnvironmentError } from "@/lib/errors"
 import { requireAdmin } from "@/lib/auth/session"
 import { createDatabaseAdminClient } from "@/lib/database/admin"
-import type { AdminStats, AppResult, Course, CourseWithCurriculum, Profile, SectionWithLessons } from "@/types/lms"
+import type { AppResult, Course, CourseWithCurriculum, Profile, SectionWithLessons } from "@/types/lms"
 
-type PersonRef = Pick<Profile, "id" | "full_name" | "email"> & Partial<Pick<Profile, "status">>
+export type PersonRef = Pick<Profile, "id" | "full_name" | "email"> & Partial<Pick<Profile, "status">>
 type BuilderVideoAsset = { id: string; state: string; original_name: string; retired_at: string | null; created_at: string; lesson_video_uploads: { id: string; initiated_by: string; state: string } | null }
 type BuilderSection = Omit<SectionWithLessons, "lessons"> & { lessons?: (NonNullable<SectionWithLessons["lessons"]>[number] & { video_assets?: BuilderVideoAsset[] })[] }
-type CourseRow = Course & { instructor?: PersonRef | null }
-type StudentRow = Profile
-type InstructorRow = Profile
-type EnrollmentRow = Record<string, unknown> & {
+export type CourseRow = Course & { instructor?: PersonRef | null }
+export type StudentRow = Profile
+export type InstructorRow = Profile
+export type EnrollmentRow = Record<string, unknown> & {
   student_id: string
   course_id: string
   id: string
@@ -22,7 +22,7 @@ type EnrollmentRow = Record<string, unknown> & {
   student?: PersonRef | null
   course?: Pick<Course, "title" | "slug"> | null
 }
-type PaymentRow = Record<string, unknown> & {
+export type PaymentRow = Record<string, unknown> & {
   id: string
   amount: number
   currency: string
@@ -33,7 +33,7 @@ type PaymentRow = Record<string, unknown> & {
   course?: Pick<Course, "title" | "slug"> | null
   student?: PersonRef | null
 }
-type PaymentMethodRow = Record<string, unknown> & {
+export type PaymentMethodRow = Record<string, unknown> & {
   updated_at: string
   id: string
   method_type: string
@@ -45,7 +45,7 @@ type PaymentMethodRow = Record<string, unknown> & {
   instructions: string | null
   is_active: boolean
 }
-type LiveClassRow = Record<string, unknown> & {
+export type LiveClassRow = Record<string, unknown> & {
   id: string
   title: string
   meeting_provider: string
@@ -54,7 +54,7 @@ type LiveClassRow = Record<string, unknown> & {
   course?: Pick<Course, "title"> | null
   instructor?: PersonRef | null
 }
-type AnnouncementRow = Record<string, unknown> & {
+export type AnnouncementRow = Record<string, unknown> & {
   id: string
   title: string
   is_published: boolean
@@ -63,7 +63,7 @@ type AnnouncementRow = Record<string, unknown> & {
   course?: Pick<Course, "title"> | null
   author?: PersonRef | null
 }
-type ContactRow = Record<string, unknown> & {
+export type ContactRow = Record<string, unknown> & {
   updated_at: string
   id: string
   full_name: string
@@ -74,28 +74,13 @@ type ContactRow = Record<string, unknown> & {
   status: string
   created_at: string
 }
-type AuditLogRow = Record<string, unknown> & {
+export type AuditLogRow = Record<string, unknown> & {
   id: string
   action: string
   entity_type: string
   metadata: Record<string, unknown>
   created_at: string
   actor?: PersonRef | null
-}
-
-export type AdminWorkspaceData = {
-  pagination?: { page: number; hasNext: boolean }
-  stats: AdminStats
-  courses: CourseRow[]
-  instructors: InstructorRow[]
-  students: StudentRow[]
-  enrollments: EnrollmentRow[]
-  payments: PaymentRow[]
-  paymentMethods: PaymentMethodRow[]
-  liveClasses: LiveClassRow[]
-  announcements: AnnouncementRow[]
-  contacts: ContactRow[]
-  auditLogs: AuditLogRow[]
 }
 
 export type CourseBuilderData = {
@@ -138,159 +123,6 @@ function appError(error: unknown): AppResult<never> {
     ok: false,
     reason: "error",
     message: getSetupErrorMessage(error),
-  }
-}
-
-async function countRows(supabase: ReturnType<typeof createDatabaseAdminClient>, table: string, filters: Record<string, unknown> = {}) {
-  let query = supabase.from(table).select("id", { count: "exact", head: true })
-  Object.entries(filters).forEach(([key, value]) => {
-    query = query.eq(key, value)
-  })
-  const { count, error } = await query
-  if (error) throw error
-  return count ?? 0
-}
-
-export async function getAdminWorkspaceData(pagination?: { entity: "courses" | "instructors" | "students" | "enrollments"; page?: string }): Promise<AppResult<AdminWorkspaceData>> {
-  try {
-    await requireAdmin()
-    const supabase = createDatabaseAdminClient()
-    const now = new Date().toISOString()
-    const requested = Number(pagination?.page ?? 1)
-    const page = Number.isSafeInteger(requested) && requested > 0 ? Math.min(requested, 100000) : 1
-    const bounds = (entity: string): [number, number] => pagination?.entity === entity ? [(page-1)*50, (page-1)*50+50] : [0,49]
-
-    const [
-      totalStudents,
-      activeStudents,
-      pendingEnrollments,
-      pendingPayments,
-      underReviewPayments,
-      publishedCourses,
-      upcomingLiveClasses,
-      completedLessons,
-      courses,
-      instructors,
-      students,
-      enrollments,
-      payments,
-      paymentMethods,
-      liveClasses,
-      announcements,
-      contacts,
-      auditLogs,
-    ] = await Promise.all([
-      countRows(supabase, "profiles", { role: "student" }),
-      countRows(supabase, "profiles", { role: "student", status: "active" }),
-      countRows(supabase, "enrollments", { status: "pending" }),
-      countRows(supabase, "payment_submissions", { status: "pending" }),
-      countRows(supabase, "payment_submissions", { status: "under_review" }),
-      countRows(supabase, "courses", { status: "published" }),
-      supabase
-        .from("live_classes")
-        .select("id", { count: "exact", head: true })
-        .gte("starts_at", now)
-        .then(({ count, error }) => {
-          if (error) throw error
-          return count ?? 0
-        }),
-      countRows(supabase, "lesson_progress", { is_completed: true }),
-      supabase
-        .from("courses")
-        .select("*, instructor:profiles!courses_instructor_id_fkey(id, full_name, email)")
-        .order("created_at", { ascending: false })
-        .range(...bounds("courses")),
-      supabase
-        .from("profiles")
-        .select("*")
-        .eq("role", "instructor")
-        .order("created_at", { ascending: false })
-        .range(...bounds("instructors")),
-      supabase
-        .from("profiles")
-        .select("*")
-        .eq("role", "student")
-        .order("created_at", { ascending: false })
-        .range(...bounds("students")),
-      supabase
-        .from("enrollments")
-        .select("*, student:profiles!enrollments_student_id_fkey(full_name,email,status), course:courses(title,slug)")
-        .order("created_at", { ascending: false })
-        .range(...bounds("enrollments")),
-      supabase
-        .from("payment_submissions")
-        .select("*, course:courses(title,slug), student:profiles!payment_submissions_student_id_fkey(full_name,email)")
-        .order("created_at", { ascending: false })
-        .limit(50),
-      supabase
-        .from("payment_methods")
-        .select("*")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("live_classes")
-        .select("*, course:courses(title), instructor:profiles(full_name,email)")
-        .order("starts_at", { ascending: true })
-        .limit(50),
-      supabase
-        .from("announcements")
-        .select("*, course:courses(title), author:profiles(full_name,email)")
-        .order("created_at", { ascending: false })
-        .limit(50),
-      supabase
-        .from("contact_submissions")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50),
-      supabase
-        .from("audit_logs")
-        .select("*, actor:profiles(full_name,email)")
-        .order("created_at", { ascending: false })
-        .limit(50),
-    ])
-
-    const queryResults = [
-      courses,
-      instructors,
-      students,
-      enrollments,
-      payments,
-      paymentMethods,
-      liveClasses,
-      announcements,
-      contacts,
-      auditLogs,
-    ]
-
-    const failed = queryResults.find((result) => result.error)
-    if (failed?.error) throw failed.error
-
-    return {
-      ok: true,
-      data: {
-        stats: {
-          totalStudents,
-          activeStudents,
-          pendingEnrollments,
-          pendingPayments: pendingPayments + underReviewPayments,
-          publishedCourses,
-          upcomingLiveClasses,
-          completedLessons,
-        },
-        ...(pagination ? { pagination: { page, hasNext: ({ courses, instructors, students, enrollments }[pagination.entity].data?.length ?? 0) > 50 } } : {}),
-        courses: (courses.data ?? []).slice(0,50) as CourseRow[],
-        instructors: (instructors.data ?? []).slice(0,50) as InstructorRow[],
-        students: (students.data ?? []).slice(0,50) as StudentRow[],
-        enrollments: (enrollments.data ?? []).slice(0,50) as EnrollmentRow[],
-        payments: (payments.data ?? []) as PaymentRow[],
-        paymentMethods: (paymentMethods.data ?? []) as PaymentMethodRow[],
-        liveClasses: (liveClasses.data ?? []) as LiveClassRow[],
-        announcements: (announcements.data ?? []) as AnnouncementRow[],
-        contacts: (contacts.data ?? []) as ContactRow[],
-        auditLogs: (auditLogs.data ?? []) as AuditLogRow[],
-      },
-    }
-  } catch (error) {
-    return appError(error)
   }
 }
 

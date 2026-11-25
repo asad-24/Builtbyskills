@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from "vitest"
 vi.mock("server-only", () => ({}))
+vi.mock("@/lib/database/schema", () => ({ ensureDatabaseReady: vi.fn().mockResolvedValue(undefined) }))
 const context = vi.hoisted(() => ({ headers: new Headers(), cookie: "", getSession: vi.fn(), signOut: vi.fn(), signInEmail: vi.fn() }))
 vi.mock("next/headers", () => ({ headers: async () => context.headers, cookies: async () => ({ getAll: () => context.cookie ? [{ name: "session", value: context.cookie }] : [] }) }))
 vi.mock("@/lib/database/auth", () => ({ getAuth: () => ({ api: { getSession: context.getSession, signOut: context.signOut, signInEmail: context.signInEmail } }) }))

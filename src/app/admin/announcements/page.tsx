@@ -1,7 +1,7 @@
 import { createAnnouncementAction } from "@/actions/admin"
 import { ActionForm } from "@/components/admin/action-form"
 import { AdminTable, PageHeader, Panel, SelectField, SetupNotice, StatusBadge, TextAreaField, TextField } from "@/components/admin/admin-ui"
-import { getAdminWorkspaceData } from "@/features/admin/data"
+import { getAdminAnnouncementsData } from "@/features/admin/read-models"
 import { formatDate } from "@/lib/format"
 
 export const metadata = {
@@ -9,7 +9,7 @@ export const metadata = {
 }
 
 export default async function AdminAnnouncementsPage() {
-  const result = await getAdminWorkspaceData()
+  const result = await getAdminAnnouncementsData()
   if (!result.ok) return <SetupNotice message={result.message} />
 
   const courseOptions = [

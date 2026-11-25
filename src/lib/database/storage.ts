@@ -1,7 +1,7 @@
 import "server-only"
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto"
 import { mongoDb } from "./connection"
-import { ensureIndexes } from "./schema"
+import { ensureDatabaseReady } from "./schema"
 import { databaseError } from "./query"
 
 const buckets = new Set(["course-thumbnails", "payment-screenshots", "lesson-resources"])
@@ -30,7 +30,7 @@ export class FileStore {
       createSignedUploadUrl: async (path: string, _options?: { upsert?: boolean }) => {
         void _options
         try {
-          checkPath(bucket, path); await ensureIndexes()
+          checkPath(bucket, path); await ensureDatabaseReady()
           const token = randomBytes(32).toString("base64url"), id = randomUUID()
           await mongoDb().collection("file_grants").insertOne({ token: digest(token), id, bucket, path, expiresAt: new Date(Date.now() + 600_000), used: false, maxSize: bucket === "lesson-resources" ? 25 * 1024 * 1024 : 5 * 1024 * 1024 })
           return { data: { path, token }, error: null }
@@ -51,7 +51,7 @@ export class FileStore {
       },
       upload: async (path: string, body: Buffer, options?: { contentType?: string; upsert?: boolean }) => {
         try {
-          checkPath(bucket, path); await ensureIndexes()
+          checkPath(bucket, path); await ensureDatabaseReady()
           if (body.length > (bucket === "lesson-resources" ? 25 : 5) * 1024 * 1024 || !body.length) throw new Error("Invalid file size")
           const id = randomUUID()
           for (let i = 0; i * uploadChunkSize < body.length; i++) await mongoDb().collection("file_chunks").insertOne({ fileId: id, index: i, bytes: body.subarray(i * uploadChunkSize, (i + 1) * uploadChunkSize) })

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { mongoDb, transaction } from "@/lib/database/connection"
 import { uploadGrant, uploadChunkSize } from "@/lib/database/storage"
-import { ensureIndexes } from "@/lib/database/schema"
+import { ensureDatabaseReady } from "@/lib/database/schema"
 
 export const runtime = "nodejs"
 const error = () => NextResponse.json({ error: "Upload is unavailable or invalid. Upload the file again." }, { status: 400 })
@@ -12,7 +12,7 @@ export async function PUT(request: Request) {
     const params = new URL(request.url).searchParams
     const input = identity.parse(Object.fromEntries(params))
     const index = Number(params.get("index"))
-    await ensureIndexes()
+    await ensureDatabaseReady()
     const grant = await uploadGrant(input.token, input.bucket, input.path)
     if (!grant || !Number.isInteger(index) || index < 0 || index >= Math.ceil(grant.maxSize / uploadChunkSize)) return error()
     if (Number(request.headers.get("content-length")) > uploadChunkSize) return error()

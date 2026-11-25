@@ -1,7 +1,7 @@
 import "server-only"
 import { randomUUID } from "node:crypto"
 import { transaction } from "./connection"
-import { ensureIndexes } from "./schema"
+import { ensureDatabaseReady } from "./schema"
 import { fail, defaultsFor, type Row } from "./query"
 import { ensureStudent } from "./writes"
 import type { Access } from "./access"
@@ -9,7 +9,7 @@ import { approvePaymentOperation } from "./payment-operation"
 import { videoOperation } from "./video-operations"
 
 export async function runOperation(name: string, args: Row, access: Access) {
-  await ensureIndexes()
+  await ensureDatabaseReady()
   return transaction(async (db, session) => {
     const options = { session }, now = new Date().toISOString()
     if (name === "ensure_student_profile") {

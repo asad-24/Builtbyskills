@@ -1,13 +1,13 @@
 import { AdminTable, PageHeader, SetupNotice } from "@/components/admin/admin-ui"
-import { getAdminWorkspaceData } from "@/features/admin/data"
+import { guardDashboard } from "@/lib/auth/session"
 
 export const metadata = {
   title: "General Settings | Builtbyskills Admin",
 }
 
 export default async function AdminGeneralSettingsPage() {
-  const result = await getAdminWorkspaceData()
-  if (!result.ok) return <SetupNotice message={result.message} />
+  const profile = await guardDashboard("super_admin")
+  if (!profile) return <SetupNotice message="Database configuration is incomplete." />
 
   return (
     <>

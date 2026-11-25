@@ -4,7 +4,7 @@ import { betterAuth } from "better-auth"
 import { mongodbAdapter } from "@better-auth/mongo-adapter"
 import { nextCookies } from "better-auth/next-js"
 import { mongoDb, mongoClient, transaction } from "./connection"
-import { ensureIndexes } from "./schema"
+import { ensureDatabaseReady } from "./schema"
 import { MissingEnvironmentError } from "@/lib/errors"
 import { sendTransactionalEmail } from "@/lib/email/send"
 
@@ -53,7 +53,7 @@ function configure() {
 export function getAuth() { return instance ??= configure() }
 
 export async function provisionAuthUser(input: { email: string; password?: string; email_confirm?: boolean; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> }) {
-  await ensureIndexes()
+  await ensureDatabaseReady()
   const context = await getAuth().$context
   const email = input.email.trim().toLowerCase()
   if (await context.internalAdapter.findUserByEmail(email)) return { data: { user: null }, error: { code: "email_exists", message: "An account with this email already exists." } }

@@ -210,7 +210,7 @@ export function AdminTable({
 export function BuilderLink({ id }: { id: string }) {
   return (
     <Button asChild variant="outline" size="sm">
-      <Link href={`/admin/course-builder/${id}`}>Builder</Link>
+      <Link prefetch={false} href={`/admin/course-builder/${id}`}>Builder</Link>
     </Button>
   )
 }

@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getAuth } from "@/lib/database/auth"
-import { mongoDb } from "@/lib/database/connection"
+import { getSessionCookie } from "better-auth/cookies"
 
 const PUBLIC_ROUTES = new Set([
   "/",
@@ -57,25 +56,9 @@ export async function proxy(request: NextRequest) {
     return response
   }
 
-  const session = await getAuth().api.getSession({ headers: request.headers, query: { disableCookieCache: true, disableRefresh: true } })
-  const user = session?.user
-
-  if (!user) {
-    return redirectToLogin(request, response)
-  }
-
-  const profile = user.emailVerified ? await mongoDb().collection("profiles").findOne({ auth_user_id: user.id, status: "active" }) : null
-  if (!profile) return redirectToLogin(request, response)
-
-  if (pathname.startsWith("/admin") && profile?.role !== "super_admin") {
-    return redirectToLogin(request, response)
-  }
-
-  if (pathname.startsWith("/instructor") && profile?.role !== "instructor") {
-    return redirectToLogin(request, response)
-  }
-
-  if (pathname.startsWith("/student") && profile?.role !== "student") {
+  // Optimistic routing only. Layouts, data loaders, API handlers and actions
+  // validate the live session and role before returning data or writing.
+  if (!getSessionCookie(request)) {
     return redirectToLogin(request, response)
   }
 

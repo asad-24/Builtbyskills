@@ -33,7 +33,7 @@ export function ActionForm({
           {state.message}
         </p>
       ) : null}
-      {state?.ok && state.nextHref ? <Button asChild><Link href={state.nextHref}>Continue to Course Builder</Link></Button> : null}
+      {state?.ok && state.nextHref ? <Button asChild><Link prefetch={false} href={state.nextHref}>Continue to Course Builder</Link></Button> : null}
       {state?.ok && state.nextHref ? null : <SubmitButton label={submitLabel} />}
     </form>
   )

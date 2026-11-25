@@ -1,7 +1,6 @@
-import { getAdminPeopleOptions } from "@/features/admin/people-options"
 import { RecordPagination } from "@/components/admin/record-pagination"
 import { AdminTable, PageHeader, SetupNotice, StatusBadge } from "@/components/admin/admin-ui"
-import { getAdminWorkspaceData } from "@/features/admin/data"
+import { getAdminEnrollmentsData } from "@/features/admin/read-models"
 import { EnrollmentManagementForm } from "@/components/admin/portal-management"
 import { formatDate } from "@/lib/format"
 
@@ -10,14 +9,13 @@ export const metadata = {
 }
 
 export default async function AdminEnrollmentsPage({ searchParams }: { searchParams?: Promise<{ page?: string }> } = {}) {
-  const result = await getAdminWorkspaceData({ entity: "enrollments", page: (await searchParams)?.page })
+  const result = await getAdminEnrollmentsData((await searchParams)?.page)
   if (!result.ok) return <SetupNotice message={result.message} />
 
-  const studentOptions = await getAdminPeopleOptions("student")
   return (
     <>
       <PageHeader title="Enrollments" description="Review active, pending, suspended, completed, expired, and cancelled course assignments." />
-      <EnrollmentManagementForm courses={result.data.courses.map(course => ({ value: course.id, label: course.title }))} students={studentOptions} />
+      <EnrollmentManagementForm courses={result.data.courses.map(course => ({ value: course.id, label: course.title }))} students={result.data.studentOptions} />
       <div className="mt-6" />
       <AdminTable
         columns={["Student", "Course", "Status", "Starts", "Expires", "Assigned", "Manage access"]}

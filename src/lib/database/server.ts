@@ -2,6 +2,7 @@ import "server-only"
 import { headers, cookies } from "next/headers"
 import { getAuth } from "./auth"
 import { DatabaseClient } from "./client"
+import { ensureDatabaseReady } from "./schema"
 
 const requestClients = new WeakMap<object, DatabaseClient>()
 export async function createDatabaseServerClient(_options: { passwordRecovery?: boolean } = {}) {
@@ -19,6 +20,7 @@ export async function createDatabaseServerClient(_options: { passwordRecovery?: 
   }
   let identityCache: { cookie: string; value: Promise<Awaited<ReturnType<typeof auth.api.getSession>>> } | undefined
   const identity = async () => {
+    await ensureDatabaseReady()
     const current = await currentHeaders(), cookie = current.get("cookie") || ""
     if (!identityCache || identityCache.cookie !== cookie) identityCache = { cookie, value: auth.api.getSession({ headers: current }) }
     const session = await identityCache.value
@@ -29,19 +31,20 @@ export async function createDatabaseServerClient(_options: { passwordRecovery?: 
     ...client.auth,
     getUser: async () => { try { const user = await identity(); return { data: { user }, error: null } } catch { return { data: { user: null }, error: { code: "AUTH_UNAVAILABLE", message: "Sign-in is temporarily unavailable. Please try again shortly." } } } },
     signInWithPassword: async ({ email, password }: { email: string; password: string }) => {
-      try { await auth.api.signInEmail({ headers: requestHeaders, body: { email, password } }); return { error: null } }
+      try { await ensureDatabaseReady(); await auth.api.signInEmail({ headers: requestHeaders, body: { email, password } }); return { error: null } }
       catch (error) { const code = (error as { body?: { code?: string } }).body?.code; return { error: { code: code || "AUTH_UNAVAILABLE", message: code === "INVALID_EMAIL_OR_PASSWORD" ? "Invalid email or password." : code === "EMAIL_NOT_VERIFIED" ? "Confirm your email before signing in." : "Sign-in is temporarily unavailable. Please try again shortly." } } }
     },
     signOut: async () => { await auth.api.signOut({ headers: await currentHeaders() }); return { error: null } },
     signUp: async (input: { email: string; password: string; options?: { data?: Record<string, string>; emailRedirectTo?: string } }) => {
       try {
+        await ensureDatabaseReady()
         const result = await auth.api.signUpEmail({ headers: requestHeaders, body: { email: input.email, password: input.password, name: input.options?.data?.full_name || input.email, phone: input.options?.data?.phone, callbackURL: "/login?confirmed=1" } })
         return { data: { user: result.user, session: null }, error: null }
       } catch { return { data: { user: null, session: null }, error: { code: "SIGNUP_FAILED", message: "Unable to register. Please try again or use Forgot password." } } }
     },
     resetPasswordForEmail: async (email: string, _options?: { redirectTo?: string }) => {
       void _options
-      try { await auth.api.requestPasswordReset({ headers: requestHeaders, body: { email, redirectTo: "/reset-password" } }); return { error: null } }
+      try { await ensureDatabaseReady(); await auth.api.requestPasswordReset({ headers: requestHeaders, body: { email, redirectTo: "/reset-password" } }); return { error: null } }
       catch { return { error: { code: "EMAIL_FAILED", message: "Unable to send a reset link. Please try again." } } }
     },
   }

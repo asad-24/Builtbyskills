@@ -12,6 +12,8 @@ Next.js learning management system backed by MongoDB Atlas and Better Auth. Mong
 
 ## Vercel
 
+Before deploying updates to an existing database, run `npm run db:prepare` with that database environment. This preserves existing records, prepares indexes, and writes the runtime readiness version. Normal requests check readiness once per process and never create indexes. New databases still use `npm run db:initialize`.
+
 Import the current `.env.vercel` into Vercel Production, remove old `NEXT_PUBLIC_SUPABASE_*` and `SUPABASE_*` variables, and redeploy this updated code. Changing environment variables without deploying the MongoDB implementation will leave the old deployment using Supabase. `NEXT_PUBLIC_SITE_URL` must match the exact live HTTPS origin. Keep `BETTER_AUTH_SECRET` stable; it signs authentication cookies and private file links. MongoDB and authentication keys are server-only.
 
 The Atlas database user must have read/write access to the selected database. Atlas Network Access must allow the deployment's outbound connections (use your hosting provider's supported egress configuration). Brevo must have a verified sender and a valid API key for confirmation/reset emails. Admin-created accounts receive password setup links. Authentication sessions are stored in MongoDB, with HttpOnly cookies, password hashing, email verification, rate limiting, and revocation on password reset. Account roles are stored in the private profile collection, never accepted from registration input.
@@ -27,3 +29,11 @@ Existing Supabase accounts, passwords, enrollments, and uploaded files are not a
 - `npm run build`
 
 File uploads use server-issued, expiring grants and 1 MB chunks to stay within serverless request limits. Course thumbnails are public; payment screenshots and lesson resources require signed, expiring URLs after authorization. Large MP4 videos continue to use multipart R2 uploads.
+
+## Admin performance verification
+
+Admin links load on click. Each admin page has a scoped, authorized read model; Overview uses six statistics operations plus three bounded lists. Session and profile reads are shared only inside a render, while actions and API handlers keep fresh authorization. Proxy checks cookie presence; it does not authorize access to protected data.
+
+Run `npm run test:admin:performance -- baseline` before an optimization and `npm run test:admin:performance -- after` afterwards. Both use the same disposable MongoDB database and production build on port 3300. The browser checks 15 seconds idle plus hover, navigation and pagination, post-save refresh, forged/expired sessions, and disabled accounts. A successful after run deletes its fixtures. Failed runs preserve `.tmp/admin-performance-fixture.json` and its generated test database for diagnosis/retry; never use this harness with an application database.
+
+Set `LMS_PERF=1` only when investigating query counts. Logs include allowlisted command/collection names and durations, without query values, connection strings, tokens, or personal data. It is off by default. Schema changes that alter runtime requirements must increment `DATABASE_SCHEMA_VERSION` and be prepared before deployment.

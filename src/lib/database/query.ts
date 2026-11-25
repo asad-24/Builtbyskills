@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto"
 import type { ClientSession, Document, Filter } from "mongodb"
 import { mongoDb, transaction } from "./connection"
 import { scope, type Access } from "./access"
-import { ensureIndexes, tables, type Table } from "./schema"
+import { ensureDatabaseReady, tables, type Table } from "./schema"
 import { validateWrite, cascadeDelete, syncInstructor } from "./writes"
 import { reportDatabaseError } from "./diagnostics"
 
@@ -116,7 +116,7 @@ export class Query<Single extends boolean = false> implements PromiseLike<QueryR
   }
   private async run(): Promise<QueryResult<Single>> {
     try {
-      await ensureIndexes()
+      await ensureDatabaseReady()
       const data = this.action === "select" ? await this.execute() : await transaction((_db, session) => this.execute(session))
       return data
     } catch (error) { return { data: null, error: databaseError(error, { operation: this.action, collection: this.table }), count: null } }

@@ -1,7 +1,7 @@
 import { RecordPagination } from "@/components/admin/record-pagination"
 import { AdminTable, PageHeader, SetupNotice } from "@/components/admin/admin-ui"
 import { AssignCourseDialog, CreateStudentDialog, StudentRowActions, StudentStatusButton } from "@/components/admin/student-actions"
-import { getAdminWorkspaceData } from "@/features/admin/data"
+import { getAdminStudentsData } from "@/features/admin/read-models"
 import { formatDate } from "@/lib/format"
 
 export const metadata = {
@@ -9,7 +9,7 @@ export const metadata = {
 }
 
 export default async function AdminStudentsPage({ searchParams }: { searchParams?: Promise<{ page?: string }> } = {}) {
-  const result = await getAdminWorkspaceData({ entity: "students", page: (await searchParams)?.page })
+  const result = await getAdminStudentsData((await searchParams)?.page)
   if (!result.ok) return <SetupNotice message={result.message} />
 
   const studentOptions = result.data.students.map((student) => ({ value: student.id, label: `${student.full_name} (${student.email})` }))

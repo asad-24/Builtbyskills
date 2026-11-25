@@ -3,14 +3,14 @@ import { deletePaymentMethodAction } from "@/actions/admin-records"
 import { EmptyState, PageHeader, Panel } from "@/components/admin/admin-ui"
 import { SetupNotice } from "@/components/admin/admin-ui"
 import { PaymentMethodForm, PaymentMethodAvailabilityForm } from "@/components/admin/payment-method-form"
-import { getAdminWorkspaceData } from "@/features/admin/data"
+import { getAdminPaymentSettingsData } from "@/features/admin/read-models"
 
 export const metadata = { title: "Payment Settings | Builtbyskills Admin" }
 
 const typeLabels: Record<string, string> = { bank_transfer: "Bank Transfer", jazzcash: "JazzCash", easypaisa: "EasyPaisa" }
 
 export default async function AdminPaymentSettingsPage() {
-  const result = await getAdminWorkspaceData()
+  const result = await getAdminPaymentSettingsData()
   if (!result.ok) return <SetupNotice message={result.message} />
 
   return <>

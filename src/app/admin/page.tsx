@@ -1,5 +1,5 @@
 import { AdminTable, PageHeader, SetupNotice, StatCard, StatusBadge } from "@/components/admin/admin-ui"
-import { getAdminWorkspaceData } from "@/features/admin/data"
+import { getAdminOverviewData } from "@/features/admin/read-models"
 import { formatDate, formatMoney } from "@/lib/format"
 
 export const metadata = {
@@ -7,7 +7,7 @@ export const metadata = {
 }
 
 export default async function AdminOverviewPage() {
-  const result = await getAdminWorkspaceData()
+  const result = await getAdminOverviewData()
 
   if (!result.ok) return <SetupNotice message={result.message} />
 
